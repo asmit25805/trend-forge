@@ -25,7 +25,8 @@ HEADERS = {
 
 # ── Repo creation ─────────────────────────────────────────────────────────────
 
-def create_repo(name: str, description: str, topics: list[str]) -> str:
+def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, str]:
+    """Returns (full_name, init_commit_sha) — the auto-init commit to build on."""
     url = "https://api.github.com/user/repos"
     payload = {
         "name": name,
@@ -47,18 +48,23 @@ def create_repo(name: str, description: str, topics: list[str]) -> str:
     if topics:
         _set_topics(full_name, topics)
 
-    # Delete the auto-init ref so _push_batch can create main from scratch
-    # with our own commit history. Retry in case the ref isn't written yet.
-    for _ in range(6):
-        r = requests.delete(
+    # Fetch the auto-init commit SHA so our first batch can use it as parent.
+    # Retry briefly — GitHub may not have written the ref yet.
+    init_sha = None
+    for _ in range(8):
+        r = requests.get(
             f"https://api.github.com/repos/{full_name}/git/refs/heads/main",
             headers=HEADERS,
         )
-        if r.status_code in (204, 422):  # 204 = deleted, 422 = not yet visible
+        if r.status_code == 200:
+            init_sha = r.json()["object"]["sha"]
             break
-        time.sleep(3)
+        time.sleep(2)
 
-    return full_name
+    if not init_sha:
+        raise RuntimeError(f"[pusher] Could not resolve auto-init commit for {full_name}")
+
+    return full_name, init_sha
 
 
 def _set_topics(full_name: str, topics: list[str]):
@@ -108,14 +114,11 @@ def _create_commit(full_name: str, message: str, tree_sha: str, parent_sha: str 
 
 
 def _update_ref(full_name: str, commit_sha: str, create: bool = False):
-    if create:
-        url = f"https://api.github.com/repos/{full_name}/git/refs"
-        payload = {"ref": "refs/heads/main", "sha": commit_sha}
-        resp = requests.post(url, headers=HEADERS, json=payload)
-    else:
-        url = f"https://api.github.com/repos/{full_name}/git/refs/heads/main"
-        payload = {"sha": commit_sha, "force": False}
-        resp = requests.patch(url, headers=HEADERS, json=payload)
+    # Always force-update — ref already exists from auto-init.
+    # force=True covers both advancing the branch and overwriting it.
+    url = f"https://api.github.com/repos/{full_name}/git/refs/heads/main"
+    payload = {"sha": commit_sha, "force": True}
+    resp = requests.patch(url, headers=HEADERS, json=payload)
     resp.raise_for_status()
 
 
@@ -137,7 +140,7 @@ def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha:
 
     tree_sha = _create_tree(full_name, base_tree, blobs)
     commit_sha = _create_commit(full_name, message, tree_sha, parent_sha)
-    _update_ref(full_name, commit_sha, create=(parent_sha is None))
+    _update_ref(full_name, commit_sha)
 
     return commit_sha
 
@@ -145,7 +148,7 @@ def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha:
 # ── Main push entry point ─────────────────────────────────────────────────────
 
 def push_project(project: dict) -> str:
-    full_name = create_repo(
+    full_name, parent_sha = create_repo(   # seed parent_sha from auto-init commit
         project["repo_name"],
         project.get("description", ""),
         project.get("topics", []),
@@ -182,7 +185,6 @@ def push_project(project: dict) -> str:
     active = [b for b in batches if b[1]]
     print(f"[pusher] Pushing {total} files across {len(active)} commits...")
 
-    parent_sha = None
     for commit_msg, batch in batches:
         if not batch:
             continue
