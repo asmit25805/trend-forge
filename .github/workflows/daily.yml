@@ -2,21 +2,20 @@ name: TrendForge Daily Pipeline
 
 on:
   schedule:
-    # Runs every day at 6:00 AM IST (00:30 UTC)
     - cron: "30 0 * * *"
-  workflow_dispatch:  # allow manual trigger from GitHub UI
+  workflow_dispatch:
 
 jobs:
   trend-forge:
     runs-on: ubuntu-latest
     permissions:
-      contents: write  # needed to commit seen_repos.json and run_log.json back
+      contents: write
 
     steps:
       - name: Checkout TrendForge repo
         uses: actions/checkout@v4
         with:
-          token: ${{ secrets.GITHUB_TOKEN }}
+          token: ${{ secrets.PAT_TOKEN }}
 
       - name: Set up Python
         uses: actions/setup-python@v5
@@ -28,12 +27,12 @@ jobs:
 
       - name: Run TrendForge pipeline
         env:
-          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          PAT_TOKEN: ${{ secrets.PAT_TOKEN }}
           GH_USERNAME: ${{ secrets.GH_USERNAME }}
           CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
         run: python src/main.py
 
-      - name: Commit updated seen_repos.json and run_log.json
+      - name: Commit updated state files
         run: |
           git config user.name "TrendForge Bot"
           git config user.email "bot@trendforge"
