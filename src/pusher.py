@@ -11,7 +11,7 @@ from datetime import datetime, timedelta
 import random
 
 GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
-GITHUB_USERNAME = os.environ["GITHUB_USERNAME"]
+GITHUB_USERNAME = os.environ["GH_USERNAME"]
 
 HEADERS = {
     "Authorization": f"token {GITHUB_TOKEN}",
