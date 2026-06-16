@@ -31,7 +31,7 @@ def create_repo(name: str, description: str, topics: list[str]) -> str:
         "name": name,
         "description": description,
         "private": False,
-        "auto_init": False,
+        "auto_init": True,   # provisions the git object store immediately
         "has_issues": True,
         "has_projects": False,
         "has_wiki": False,
@@ -47,10 +47,16 @@ def create_repo(name: str, description: str, topics: list[str]) -> str:
     if topics:
         _set_topics(full_name, topics)
 
-    # GitHub provisions the git object store asynchronously after repo creation.
-    # Without this delay the first blob upload hits a 409 before the store is ready.
-    print("[pusher] Waiting for repo git store to initialize...")
-    time.sleep(5)
+    # Delete the auto-init ref so _push_batch can create main from scratch
+    # with our own commit history. Retry in case the ref isn't written yet.
+    for _ in range(6):
+        r = requests.delete(
+            f"https://api.github.com/repos/{full_name}/git/refs/heads/main",
+            headers=HEADERS,
+        )
+        if r.status_code in (204, 422):  # 204 = deleted, 422 = not yet visible
+            break
+        time.sleep(3)
 
     return full_name
 
@@ -70,17 +76,9 @@ def _create_blob(full_name: str, content: str) -> str:
         "content": base64.b64encode(content.encode("utf-8")).decode("utf-8"),
         "encoding": "base64",
     }
-    # Retry on 409 — the git store can still be warming up on the first few
-    # blobs even after the initial delay. Any other error raises immediately.
-    for attempt in range(5):
-        resp = requests.post(url, headers=HEADERS, json=payload)
-        if resp.status_code == 409 and attempt < 4:
-            wait = 5 * (attempt + 1)  # 5s, 10s, 15s, 20s
-            print(f"  [blob 409] git store not ready, retrying in {wait}s (attempt {attempt + 1}/5)...")
-            time.sleep(wait)
-            continue
-        resp.raise_for_status()
-        return resp.json()["sha"]
+    resp = requests.post(url, headers=HEADERS, json=payload)
+    resp.raise_for_status()
+    return resp.json()["sha"]
 
 
 def _create_tree(full_name: str, base_tree_sha: str | None, blobs: list[dict]) -> str:
