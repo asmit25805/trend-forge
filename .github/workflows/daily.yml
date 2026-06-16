@@ -1,0 +1,42 @@
+name: TrendForge Daily Pipeline
+
+on:
+  schedule:
+    # Runs every day at 6:00 AM IST (00:30 UTC)
+    - cron: "30 0 * * *"
+  workflow_dispatch:  # allow manual trigger from GitHub UI
+
+jobs:
+  trend-forge:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write  # needed to commit seen_repos.json and run_log.json back
+
+    steps:
+      - name: Checkout TrendForge repo
+        uses: actions/checkout@v4
+        with:
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
+
+      - name: Run TrendForge pipeline
+        env:
+          GITHUB_TOKEN: ${{ secrets.PAT_TOKEN }}
+          GITHUB_USERNAME: ${{ secrets.GITHUB_USERNAME }}
+          CEREBRAS_API_KEY: ${{ secrets.CEREBRAS_API_KEY }}
+        run: python src/main.py
+
+      - name: Commit updated seen_repos.json and run_log.json
+        run: |
+          git config user.name "TrendForge Bot"
+          git config user.email "bot@trendforge"
+          git add seen_repos.json run_log.json || true
+          git diff --staged --quiet || git commit -m "chore: update seen repos and run log [skip ci]"
+          git push
