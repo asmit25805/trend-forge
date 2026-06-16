@@ -52,6 +52,43 @@ def _verify_authenticated_user():
         )
 
 
+def _check_workflow_scope(files: dict):
+    """
+    GitHub's Git Data API requires the PAT to have the separate `workflow`
+    scope (classic) or "Workflows: write" permission (fine-grained) to
+    create/update anything under .github/workflows/. Without it, the
+    create-tree call fails with an inconsistent, misleading status (404,
+    422, or 500 have all been observed for this exact cause) instead of a
+    clear permission error. Check it up front so a missing scope fails
+    loudly with an actionable message instead of burning a debugging
+    session on a cryptic 404 deep in tree creation.
+    """
+    if not any(p.startswith(".github/workflows/") for p in files):
+        return
+
+    r = requests.get("https://api.github.com/user", headers=HEADERS)
+    r.raise_for_status()
+    scopes_header = r.headers.get("X-OAuth-Scopes")
+
+    if scopes_header is None:
+        # Fine-grained PATs don't return this header — there's no reliable
+        # way to pre-check, so just proceed and let the real push surface
+        # any permission error.
+        return
+
+    scopes = {s.strip() for s in scopes_header.split(",") if s.strip()}
+    if "workflow" not in scopes:
+        raise RuntimeError(
+            "[pusher] This push includes files under .github/workflows/, but "
+            "PAT_TOKEN doesn't have the 'workflow' scope (current scopes: "
+            f"{scopes_header or '(none)'}). GitHub will reject the tree "
+            "creation for that path with a misleading 404/422 instead of a "
+            "clear permission error. Fix: GitHub → Settings → Developer "
+            "settings → Personal access tokens → edit this token → check "
+            "'workflow' → regenerate → update the PAT_TOKEN secret."
+        )
+
+
 # ── Repo creation ─────────────────────────────────────────────────────────────
 
 def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, str]:
@@ -234,6 +271,7 @@ def _load_files_from_dir(root_dir: str, exclude_dirs: set[str] | None = None) ->
 
 def push_project(project: dict) -> str:
     _verify_authenticated_user()
+    _check_workflow_scope(project.get("files", {}))
 
     full_name, parent_sha = create_repo(
         project["repo_name"],
