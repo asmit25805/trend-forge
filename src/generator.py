@@ -13,14 +13,18 @@ import json
 import time
 from cerebras.cloud.sdk import Cerebras
 
-client = Cerebras(api_key=os.environ["CEREBRAS_API_KEY"])
+client = Cerebras(
+    api_key=os.environ["CEREBRAS_API_KEY"],
+    timeout=60,       # FIX: hard 60s timeout per request — prevents silent hangs
+    max_retries=0,    # FIX: we handle retries ourselves; don't let SDK double-retry
+)
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> str:
-    """Call Cerebras with automatic retry on 429 rate limit."""
-    max_retries = 5
+    """Call Cerebras with retry on 429/timeout. Fails fast on other errors."""
+    max_retries = 4
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
@@ -31,22 +35,18 @@ def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> s
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            err = str(e)
-            if "429" in err or "too_many_requests" in err or "queue_exceeded" in err:
-                wait = (attempt + 1) * 8
-                print(f"  [rate limit] waiting {wait}s before retry {attempt + 1}/{max_retries}...")
+            err = str(e).lower()
+            is_retryable = any(x in err for x in ("429", "too_many_requests", "queue_exceeded", "timeout", "timed out"))
+            if is_retryable and attempt < max_retries - 1:
+                wait = 15 * (attempt + 1)   # 15s, 30s, 45s
+                print(f"  [rate limit / timeout] waiting {wait}s (attempt {attempt + 1}/{max_retries})...")
                 time.sleep(wait)
                 continue
             raise
-    raise RuntimeError("Cerebras rate limit: max retries exceeded")
+    raise RuntimeError("Cerebras: max retries exceeded")
 
 
 def _repair_json(raw: str) -> str:
-    """
-    Trim back to the last complete top-level closing brace/bracket so that
-    a response truncated mid-stream by a token limit can still be parsed.
-    Tries } first (objects), then ] (arrays).
-    """
     for closing in ("}", "]"):
         idx = raw.rfind(closing)
         if idx != -1:
@@ -60,14 +60,12 @@ def _repair_json(raw: str) -> str:
 
 
 def _parse_json(raw: str) -> dict | list:
-    """Strip markdown fences then parse JSON, with truncation recovery."""
     if raw.startswith("```"):
         parts = raw.split("```")
         raw = parts[1] if len(parts) > 1 else raw
         if raw.startswith("json"):
             raw = raw[4:]
     raw = raw.strip()
-
     try:
         return json.loads(raw)
     except json.JSONDecodeError:
@@ -231,7 +229,7 @@ REQUIREMENTS:
 - 12-18 files across proper nested directories
 - Always include: README.md, .github/workflows/ci.yml, dependency file, 2+ test files, 1 example
 - "purpose" must be specific to THIS project
-- Keep each "purpose" value short (under 12 words) to avoid hitting the token limit
+- Keep each "purpose" value under 10 words to stay within token budget
 
 Return ONLY this JSON:
 {{
@@ -245,7 +243,6 @@ Return ONLY this JSON:
   ]
 }}"""
 
-    # FIX: was 2048 — too small for an 18-file plan with source context
     raw = _call(
         [{"role": "system", "content": PLAN_SYSTEM}, {"role": "user", "content": prompt}],
         max_tokens=3000,
@@ -405,7 +402,7 @@ def generate_project(analysis: dict) -> dict:
         except Exception as e:
             print(f"  ⚠ Failed {path}: {e}")
             files[path] = f"# {path}\n# {purpose}\n"
-        time.sleep(4)
+        time.sleep(8)   # FIX: was 4s — give Cerebras more breathing room between files
 
     readme = files.pop("README.md", f"# {plan['repo_name']}\n\n{plan['description']}\n")
 
