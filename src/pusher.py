@@ -35,7 +35,7 @@ def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, st
         "name": name,
         "description": description,
         "private": False,
-        "auto_init": False,   # we seed the git DB ourselves
+        "auto_init": False,
         "has_issues": True,
         "has_projects": False,
         "has_wiki": False,
@@ -51,24 +51,32 @@ def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, st
     if topics:
         _set_topics(full_name, topics)
 
-    # Seed the git object store with an empty tree + root commit + main ref.
-    # This avoids all 409/404 races: we own every object in the repo from
-    # the start, and parent_sha is always a SHA we created ourselves.
     root_sha = _seed_repo(full_name)
     return full_name, root_sha
 
 
 def _seed_repo(full_name: str) -> str:
     """Create an empty tree → root commit → refs/heads/main. Returns commit SHA."""
-    # 1. Empty tree (git's well-known empty tree SHA works via the API too,
-    #    but creating our own is safer across GitHub's internal routing)
-    r = requests.post(
-        f"https://api.github.com/repos/{full_name}/git/trees",
-        headers=HEADERS,
-        json={"tree": []},
-    )
-    r.raise_for_status()
-    tree_sha = r.json()["sha"]
+
+    # 1. Empty tree — retry on 409 until the git object store is provisioned
+    tree_sha = None
+    for attempt in range(8):
+        r = requests.post(
+            f"https://api.github.com/repos/{full_name}/git/trees",
+            headers=HEADERS,
+            json={"tree": []},
+        )
+        if r.status_code == 409:
+            wait = 3 * (attempt + 1)
+            print(f"[pusher] git store not ready, retrying in {wait}s (attempt {attempt + 1}/8)...")
+            time.sleep(wait)
+            continue
+        r.raise_for_status()
+        tree_sha = r.json()["sha"]
+        break
+
+    if not tree_sha:
+        raise RuntimeError(f"[pusher] git object store never became ready for {full_name}")
 
     # 2. Root commit with no parents
     r = requests.post(
