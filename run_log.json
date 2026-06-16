@@ -8,5 +8,15 @@
     "generated_url": "https://github.com/asmit25805/omnigent-harness",
     "concept": "Omnigent is a Python\u2011based meta\u2011harness that unifies multiple LLM agent SDKs (Claude Code, Codex, Cursor, Pi, etc.) behind a common executor and session layer.",
     "inspiration_angle": "Omnigent blends the LangChain\u2011style tool\u2011calling model with a real\u2011time collaborative session layer, taking the plug\u2011in pattern seen in VS Code extensions and applying it to LLM SDKs, thereby enabling on\u2011the\u2011fly swapping of vendor back\u2011ends without code changes."
+  },
+  {
+    "date": "2026-06-16T11:55:17.197119",
+    "category": "developer-tools",
+    "source_repo": "DietrichGebert/ponytail",
+    "source_stars": 20051,
+    "generated_repo": "slimcode",
+    "generated_url": "https://github.com/asmit25805/slimcode",
+    "concept": "A portable AI\u2011agent skill that enforces a minimalist \"lazy senior dev\" mode, automatically reducing generated code to the smallest viable implementation.",
+    "inspiration_angle": "A cross\u2011agent \"lazy senior developer\" enforcement layer that codifies YAGNI and standard\u2011library\u2011first principles as a reusable skill set, turning the LLM from a code generator into a code optimizer that automatically emits the most concise, dependency\u2011free solution."
   }
 ]

@@ -1,6 +1,7 @@
 {
   "repos": [
-    "omnigent-ai/omnigent"
+    "omnigent-ai/omnigent",
+    "DietrichGebert/ponytail"
   ],
-  "last_category_index": 0
+  "last_category_index": 1
 }
