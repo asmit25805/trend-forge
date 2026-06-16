@@ -1,6 +1,10 @@
 """
 Creates a new GitHub repo and pushes all generated files.
 Spreads commits across logical groups to look like real development history.
+
+Uses the Git Tree API to push each batch as a single atomic commit, which
+avoids the race condition where the Contents API 404s on nested paths
+(e.g. .github/workflows/) because the branch isn't indexed yet.
 """
 
 import os
@@ -18,6 +22,8 @@ HEADERS = {
     "X-GitHub-Api-Version": "2022-11-28",
 }
 
+
+# ── Repo creation ─────────────────────────────────────────────────────────────
 
 def create_repo(name: str, description: str, topics: list[str]) -> str:
     url = "https://api.github.com/user/repos"
@@ -49,60 +55,102 @@ def _set_topics(full_name: str, topics: list[str]):
     requests.put(url, headers=HEADERS, json={"names": clean})
 
 
-def _push_file(full_name: str, path: str, content: str, message: str):
+# ── Git Tree API helpers ──────────────────────────────────────────────────────
+
+def _create_blob(full_name: str, content: str) -> str:
+    """Upload file content as a blob and return its SHA."""
+    url = f"https://api.github.com/repos/{full_name}/git/blobs"
+    payload = {
+        "content": base64.b64encode(content.encode("utf-8")).decode("utf-8"),
+        "encoding": "base64",
+    }
+    resp = requests.post(url, headers=HEADERS, json=payload)
+    resp.raise_for_status()
+    return resp.json()["sha"]
+
+
+def _create_tree(full_name: str, base_tree_sha: str | None, blobs: list[dict]) -> str:
     """
-    Push a single file. Retries on 429 (rate limit) and 404 (branch not
-    indexed yet).
+    Create a git tree from a list of {path, blob_sha} dicts.
+    base_tree_sha is None only for the very first commit.
+    Returns the new tree SHA.
     """
-    url = f"https://api.github.com/repos/{full_name}/contents/{path}"
-    encoded = base64.b64encode(content.encode("utf-8")).decode("utf-8")
-    payload = {"message": message, "content": encoded, "branch": "main"}
+    url = f"https://api.github.com/repos/{full_name}/git/trees"
+    tree = [
+        {"path": b["path"], "mode": "100644", "type": "blob", "sha": b["blob_sha"]}
+        for b in blobs
+    ]
+    payload = {"tree": tree}
+    if base_tree_sha:
+        payload["base_tree"] = base_tree_sha
+    resp = requests.post(url, headers=HEADERS, json=payload)
+    resp.raise_for_status()
+    return resp.json()["sha"]
 
-    existing = requests.get(url, headers=HEADERS)
-    if existing.status_code == 200:
-        payload["sha"] = existing.json()["sha"]
 
-    wait_404 = [5, 10, 15, 20, 30, 45]
-    wait_429 = [10, 20, 30, 40]
+def _create_commit(full_name: str, message: str, tree_sha: str, parent_sha: str | None) -> str:
+    """Create a commit object and return its SHA."""
+    url = f"https://api.github.com/repos/{full_name}/git/commits"
+    payload = {"message": message, "tree": tree_sha}
+    if parent_sha:
+        payload["parents"] = [parent_sha]
+    else:
+        payload["parents"] = []
+    resp = requests.post(url, headers=HEADERS, json=payload)
+    resp.raise_for_status()
+    return resp.json()["sha"]
 
-    attempt_404 = 0
-    attempt_429 = 0
 
-    while True:
-        resp = requests.put(url, headers=HEADERS, json=payload)
+def _update_ref(full_name: str, commit_sha: str, create: bool = False):
+    """Point refs/heads/main at commit_sha. Creates the ref on the first commit."""
+    if create:
+        url = f"https://api.github.com/repos/{full_name}/git/refs"
+        payload = {"ref": "refs/heads/main", "sha": commit_sha}
+        resp = requests.post(url, headers=HEADERS, json=payload)
+    else:
+        url = f"https://api.github.com/repos/{full_name}/git/refs/heads/main"
+        payload = {"sha": commit_sha, "force": False}
+        resp = requests.patch(url, headers=HEADERS, json=payload)
+    resp.raise_for_status()
 
-        if resp.status_code in (200, 201):
-            return
 
-        if resp.status_code == 429:
-            if attempt_429 >= len(wait_429):
-                resp.raise_for_status()
-            w = wait_429[attempt_429]
-            print(f"  [429 rate limit] waiting {w}s...")
-            time.sleep(w)
-            attempt_429 += 1
-            continue
+def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha: str | None) -> str:
+    """
+    Push a batch of files as a single atomic commit using the Git Tree API.
+    Returns the new commit SHA to use as parent for the next batch.
+    """
+    # 1. Upload all file contents as blobs (can be parallelised in future)
+    blobs = []
+    for path, content in batch.items():
+        if not isinstance(content, str):
+            content = str(content)
+        blob_sha = _create_blob(full_name, content)
+        blobs.append({"path": path, "blob_sha": blob_sha})
+        print(f"  ✓ {path}")
 
-        if resp.status_code == 404:
-            if attempt_404 >= len(wait_404):
-                resp.raise_for_status()
-            w = wait_404[attempt_404]
-            print(f"  [404 {path}] branch not indexed yet, waiting {w}s...")
-            time.sleep(w)
-            attempt_404 += 1
-            continue
+    # 2. Build a tree from those blobs
+    base_tree = None  # no base tree for the very first commit
+    if parent_sha:
+        # fetch the tree SHA of the parent commit
+        url = f"https://api.github.com/repos/{full_name}/git/commits/{parent_sha}"
+        r = requests.get(url, headers=HEADERS)
+        r.raise_for_status()
+        base_tree = r.json()["tree"]["sha"]
 
-        resp.raise_for_status()
+    tree_sha = _create_tree(full_name, base_tree, blobs)
 
+    # 3. Create the commit
+    commit_sha = _create_commit(full_name, message, tree_sha, parent_sha)
+
+    # 4. Advance (or create) the main branch ref
+    _update_ref(full_name, commit_sha, create=(parent_sha is None))
+
+    return commit_sha
+
+
+# ── Main push entry point ─────────────────────────────────────────────────────
 
 def push_project(project: dict) -> str:
-    """
-    Push all files in a logical commit order.
-
-    README and .github/ files go together in the first commit so the branch
-    is fully created before any subsequent commits touch nested paths.
-    Everything else follows grouped into meaningful commits.
-    """
     full_name = create_repo(
         project["repo_name"],
         project.get("description", ""),
@@ -125,10 +173,8 @@ def push_project(project: dict) -> str:
     )
     other_files = {p: c for p, c in files.items() if p not in assigned}
 
-    # FIX: .github/ files are pushed in the same first commit as README so
-    # the branch is fully indexed before any later commits try to write to it.
-    # Pushing .github/workflows/* in a separate second commit caused a 404
-    # race condition because GitHub hadn't finished indexing the new branch.
+    # README + .github/ in the very first commit so the branch is created
+    # with all CI files present atomically — no indexing race condition.
     initial_batch = {"README.md": readme, **github_files}
 
     batches = [
@@ -145,17 +191,13 @@ def push_project(project: dict) -> str:
     active = [b for b in batches if b[1]]
     print(f"[pusher] Pushing {total} files across {len(active)} commits...")
 
+    parent_sha = None
     for commit_msg, batch in batches:
         if not batch:
             continue
         print(f"\n[pusher] Commit: '{commit_msg}' ({len(batch)} file(s))")
-        for path, content in batch.items():
-            if not isinstance(content, str):
-                content = str(content)
-            _push_file(full_name, path, content, commit_msg)
-            print(f"  ✓ {path}")
-            time.sleep(1)
-        time.sleep(2)
+        parent_sha = _push_batch(full_name, batch, commit_msg, parent_sha)
+        time.sleep(1)  # be polite to the API between commits
 
     repo_url = f"https://github.com/{full_name}"
     print(f"\n[pusher] ✅ Done! Live at: {repo_url}")
