@@ -20,7 +20,7 @@ client = Cerebras(api_key=os.environ["CEREBRAS_API_KEY"])
 
 def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> str:
     response = client.chat.completions.create(
-        model="llama-4-scout-17b-16e-instruct",
+        model="gpt-oss-120b",
         messages=messages,
         max_tokens=max_tokens,
         temperature=temperature,
