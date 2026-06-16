@@ -226,7 +226,7 @@ Based on the actual code above, return ONLY JSON matching this schema:
 Be specific — reference actual patterns, function names, or architecture choices you saw in the code."""
 
     response = client.chat.completions.create(
-        model="llama-4-scout-17b-16e-instruct",
+        model="gpt-oss-120b",
         messages=[
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
