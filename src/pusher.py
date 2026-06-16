@@ -26,13 +26,16 @@ HEADERS = {
 # ── Repo creation ─────────────────────────────────────────────────────────────
 
 def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, str]:
-    """Returns (full_name, init_commit_sha) — the auto-init commit to build on."""
+    """
+    Creates an empty repo, seeds the git DB with an empty root commit,
+    and returns (full_name, root_commit_sha) ready for _push_batch.
+    """
     url = "https://api.github.com/user/repos"
     payload = {
         "name": name,
         "description": description,
         "private": False,
-        "auto_init": True,   # provisions the git object store immediately
+        "auto_init": False,   # we seed the git DB ourselves
         "has_issues": True,
         "has_projects": False,
         "has_wiki": False,
@@ -48,23 +51,43 @@ def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, st
     if topics:
         _set_topics(full_name, topics)
 
-    # Fetch the auto-init commit SHA so our first batch can use it as parent.
-    # Retry briefly — GitHub may not have written the ref yet.
-    init_sha = None
-    for _ in range(8):
-        r = requests.get(
-            f"https://api.github.com/repos/{full_name}/git/refs/heads/main",
-            headers=HEADERS,
-        )
-        if r.status_code == 200:
-            init_sha = r.json()["object"]["sha"]
-            break
-        time.sleep(2)
+    # Seed the git object store with an empty tree + root commit + main ref.
+    # This avoids all 409/404 races: we own every object in the repo from
+    # the start, and parent_sha is always a SHA we created ourselves.
+    root_sha = _seed_repo(full_name)
+    return full_name, root_sha
 
-    if not init_sha:
-        raise RuntimeError(f"[pusher] Could not resolve auto-init commit for {full_name}")
 
-    return full_name, init_sha
+def _seed_repo(full_name: str) -> str:
+    """Create an empty tree → root commit → refs/heads/main. Returns commit SHA."""
+    # 1. Empty tree (git's well-known empty tree SHA works via the API too,
+    #    but creating our own is safer across GitHub's internal routing)
+    r = requests.post(
+        f"https://api.github.com/repos/{full_name}/git/trees",
+        headers=HEADERS,
+        json={"tree": []},
+    )
+    r.raise_for_status()
+    tree_sha = r.json()["sha"]
+
+    # 2. Root commit with no parents
+    r = requests.post(
+        f"https://api.github.com/repos/{full_name}/git/commits",
+        headers=HEADERS,
+        json={"message": "root", "tree": tree_sha, "parents": []},
+    )
+    r.raise_for_status()
+    commit_sha = r.json()["sha"]
+
+    # 3. Create main branch pointing at it
+    r = requests.post(
+        f"https://api.github.com/repos/{full_name}/git/refs",
+        headers=HEADERS,
+        json={"ref": "refs/heads/main", "sha": commit_sha},
+    )
+    r.raise_for_status()
+
+    return commit_sha
 
 
 def _set_topics(full_name: str, topics: list[str]):
@@ -87,42 +110,44 @@ def _create_blob(full_name: str, content: str) -> str:
     return resp.json()["sha"]
 
 
-def _create_tree(full_name: str, base_tree_sha: str | None, blobs: list[dict]) -> str:
+def _create_tree(full_name: str, base_tree_sha: str, blobs: list[dict]) -> str:
+    """Create a git tree built on top of base_tree_sha."""
     url = f"https://api.github.com/repos/{full_name}/git/trees"
     tree = [
         {"path": b["path"], "mode": "100644", "type": "blob", "sha": b["blob_sha"]}
         for b in blobs
     ]
-    payload = {"tree": tree}
-    if base_tree_sha:
-        payload["base_tree"] = base_tree_sha
-    resp = requests.post(url, headers=HEADERS, json=payload)
+    resp = requests.post(url, headers=HEADERS, json={"tree": tree, "base_tree": base_tree_sha})
     resp.raise_for_status()
     return resp.json()["sha"]
 
 
-def _create_commit(full_name: str, message: str, tree_sha: str, parent_sha: str | None) -> str:
+def _create_commit(full_name: str, message: str, tree_sha: str, parent_sha: str) -> str:
+    """Create a commit object and return its SHA."""
     url = f"https://api.github.com/repos/{full_name}/git/commits"
-    payload = {"message": message, "tree": tree_sha}
-    if parent_sha:
-        payload["parents"] = [parent_sha]
-    else:
-        payload["parents"] = []
-    resp = requests.post(url, headers=HEADERS, json=payload)
+    resp = requests.post(url, headers=HEADERS, json={
+        "message": message,
+        "tree": tree_sha,
+        "parents": [parent_sha],
+    })
     resp.raise_for_status()
     return resp.json()["sha"]
 
 
-def _update_ref(full_name: str, commit_sha: str, create: bool = False):
-    # Always force-update — ref already exists from auto-init.
-    # force=True covers both advancing the branch and overwriting it.
+def _update_ref(full_name: str, commit_sha: str):
+    """Advance refs/heads/main to commit_sha."""
     url = f"https://api.github.com/repos/{full_name}/git/refs/heads/main"
-    payload = {"sha": commit_sha, "force": True}
-    resp = requests.patch(url, headers=HEADERS, json=payload)
+    resp = requests.patch(url, headers=HEADERS, json={"sha": commit_sha, "force": True})
     resp.raise_for_status()
 
 
-def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha: str | None) -> str:
+def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha: str) -> str:
+    """
+    Push a batch of files as a single atomic commit using the Git Tree API.
+    Returns the new commit SHA to use as parent for the next batch.
+    parent_sha is always a valid SHA we created — never None.
+    """
+    # 1. Upload blobs
     blobs = []
     for path, content in batch.items():
         if not isinstance(content, str):
@@ -131,14 +156,16 @@ def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha:
         blobs.append({"path": path, "blob_sha": blob_sha})
         print(f"  ✓ {path}")
 
-    base_tree = None
-    if parent_sha:
-        url = f"https://api.github.com/repos/{full_name}/git/commits/{parent_sha}"
-        r = requests.get(url, headers=HEADERS)
-        r.raise_for_status()
-        base_tree = r.json()["tree"]["sha"]
+    # 2. Fetch parent's tree SHA to use as base
+    r = requests.get(
+        f"https://api.github.com/repos/{full_name}/git/commits/{parent_sha}",
+        headers=HEADERS,
+    )
+    r.raise_for_status()
+    base_tree_sha = r.json()["tree"]["sha"]
 
-    tree_sha = _create_tree(full_name, base_tree, blobs)
+    # 3. Build tree, commit, advance ref
+    tree_sha = _create_tree(full_name, base_tree_sha, blobs)
     commit_sha = _create_commit(full_name, message, tree_sha, parent_sha)
     _update_ref(full_name, commit_sha)
 
@@ -148,7 +175,7 @@ def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha:
 # ── Main push entry point ─────────────────────────────────────────────────────
 
 def push_project(project: dict) -> str:
-    full_name, parent_sha = create_repo(   # seed parent_sha from auto-init commit
+    full_name, parent_sha = create_repo(
         project["repo_name"],
         project.get("description", ""),
         project.get("topics", []),
