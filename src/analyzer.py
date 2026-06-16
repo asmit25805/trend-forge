@@ -9,7 +9,7 @@ import requests
 from cerebras.cloud.sdk import Cerebras
 
 client = Cerebras(api_key=os.environ["CEREBRAS_API_KEY"])
-GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
+GITHUB_TOKEN = os.environ["PAT_TOKEN"]
 
 HEADERS = {
     "Authorization": f"token {GITHUB_TOKEN}",
