@@ -89,6 +89,20 @@ def _check_workflow_scope(files: dict):
         )
 
 
+def preflight_check():
+    """
+    Call this at the very top of main.py's run(), before fetching trending
+    repos or making any Cerebras calls. Confirms token identity and the
+    'workflow' scope up front so a misconfigured PAT fails in under a
+    second instead of after a full (rate-limited, multi-minute) generation
+    pass. TrendForge always writes a .github/workflows/ci.yml into every
+    generated project, so the workflow scope is always required — no need
+    to wait until we know the actual file list for this run.
+    """
+    _verify_authenticated_user()
+    _check_workflow_scope({".github/workflows/ci.yml": ""})
+
+
 # ── Repo creation ─────────────────────────────────────────────────────────────
 
 def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, str]:
