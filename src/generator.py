@@ -226,7 +226,7 @@ CATEGORY CONVENTIONS:
 - Style: {profile['style']}
 
 REQUIREMENTS:
-- 12-18 files across proper nested directories
+- 8-12 files across proper nested directories
 - Always include: README.md, .github/workflows/ci.yml, dependency file, 2+ test files, 1 example
 - "purpose" must be specific to THIS project
 - Keep each "purpose" value under 10 words to stay within token budget
