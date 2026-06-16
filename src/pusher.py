@@ -1,10 +1,6 @@
 """
 Creates a new GitHub repo and pushes all generated files.
 Spreads commits across logical groups to look like real development history.
-
-Key fix: .github/ files are pushed immediately after README in the same
-initial batch — GitHub's Contents API reliably handles them once the
-main branch exists.
 """
 
 import os
@@ -53,8 +49,12 @@ def _set_topics(full_name: str, topics: list[str]):
     requests.put(url, headers=HEADERS, json={"names": clean})
 
 
-def _push_file(full_name: str, path: str, content: str, message: str, max_retries: int = 4):
-    """Push a single file with retry on 429 rate limit only."""
+def _push_file(full_name: str, path: str, content: str, message: str):
+    """
+    Push a single file. Retries on 429 (rate limit) and 404 (branch not
+    indexed yet). 404 retries use longer waits since GitHub needs time to
+    fully index the branch before nested paths like .github/ work.
+    """
     url = f"https://api.github.com/repos/{full_name}/contents/{path}"
     encoded = base64.b64encode(content.encode("utf-8")).decode("utf-8")
     payload = {"message": message, "content": encoded, "branch": "main"}
@@ -63,33 +63,45 @@ def _push_file(full_name: str, path: str, content: str, message: str, max_retrie
     if existing.status_code == 200:
         payload["sha"] = existing.json()["sha"]
 
-    for attempt in range(max_retries):
+    wait_404 = [5, 10, 15, 20, 30]   # up to ~80s total for nested paths
+    wait_429 = [10, 20, 30, 40]
+
+    attempt_404 = 0
+    attempt_429 = 0
+
+    while True:
         resp = requests.put(url, headers=HEADERS, json=payload)
+
         if resp.status_code in (200, 201):
             return
-        if resp.status_code == 429:
-            wait = (attempt + 1) * 10
-            print(f"  [rate limit] waiting {wait}s...")
-            time.sleep(wait)
-            continue
-        resp.raise_for_status()
 
-    raise RuntimeError(f"Failed to push {path} after {max_retries} attempts")
+        if resp.status_code == 429:
+            if attempt_429 >= len(wait_429):
+                resp.raise_for_status()
+            w = wait_429[attempt_429]
+            print(f"  [429 rate limit] waiting {w}s...")
+            time.sleep(w)
+            attempt_429 += 1
+            continue
+
+        if resp.status_code == 404:
+            if attempt_404 >= len(wait_404):
+                resp.raise_for_status()
+            w = wait_404[attempt_404]
+            print(f"  [404 {path}] branch not indexed yet, waiting {w}s...")
+            time.sleep(w)
+            attempt_404 += 1
+            continue
+
+        resp.raise_for_status()
 
 
 def push_project(project: dict) -> str:
     """
     Push all files in a logical commit order.
 
-    Commit order:
-      1. README.md                  — creates the main branch
-      2. .github/ files             — pushed immediately after, branch now exists
-      3. Config/dependency files    — package.json, requirements.txt etc
-      4. Core source files          — src/core, engine, pipeline etc
-      5. Supporting modules         — utils, helpers, plugins etc
-      6. Tests                      — test/, spec/
-      7. Docs and examples          — docs/, examples/
-      8. Everything else
+    README goes first to create the main branch.
+    Everything else follows grouped into meaningful commits.
     """
     full_name = create_repo(
         project["repo_name"],
@@ -100,13 +112,13 @@ def push_project(project: dict) -> str:
     readme = project.get("readme", f"# {project['repo_name']}\n")
     files: dict = project.get("files", {})
 
-    # Sort all files into ordered buckets
-    github_files   = {p: c for p, c in files.items() if p.startswith(".github/")}
-    config_files   = {p: c for p, c in files.items() if _is_config(p)}
-    core_files     = {p: c for p, c in files.items() if _is_core(p)}
-    support_files  = {p: c for p, c in files.items() if _is_support(p)}
-    test_files     = {p: c for p, c in files.items() if _is_test(p)}
-    doc_files      = {p: c for p, c in files.items() if _is_doc(p)}
+    # Bucket files by type — order matters for commit history
+    github_files  = {p: c for p, c in files.items() if p.startswith(".github/")}
+    config_files  = {p: c for p, c in files.items() if _is_config(p)}
+    core_files    = {p: c for p, c in files.items() if _is_core(p)}
+    support_files = {p: c for p, c in files.items() if _is_support(p)}
+    test_files    = {p: c for p, c in files.items() if _is_test(p)}
+    doc_files     = {p: c for p, c in files.items() if _is_doc(p)}
     assigned = (
         set(github_files) | set(config_files) | set(core_files) |
         set(support_files) | set(test_files) | set(doc_files)
@@ -125,9 +137,10 @@ def push_project(project: dict) -> str:
     ]
 
     total = 1 + sum(len(b[1]) for b in batches[1:])
-    print(f"[pusher] Pushing {total} files across {len([b for b in batches if b[1]])} commits...")
+    active = [b for b in batches if b[1]]
+    print(f"[pusher] Pushing {total} files across {len(active)} commits...")
 
-    for commit_msg, batch in batches:
+    for i, (commit_msg, batch) in enumerate(batches):
         if not batch:
             continue
         print(f"\n[pusher] Commit: '{commit_msg}' ({len(batch)} file(s))")
@@ -148,33 +161,38 @@ def push_project(project: dict) -> str:
 
 def _is_config(path: str) -> bool:
     name = path.split("/")[-1].lower()
-    return any(name == f for f in [
+    return name in {
         "package.json", "requirements.txt", "go.mod", "cargo.toml",
         "pyproject.toml", ".gitignore", ".env.example", "makefile",
         "tsconfig.json", "license", "licence", "setup.py", "setup.cfg",
         "dockerfile", ".dockerignore", "docker-compose.yml",
-    ])
+    }
 
 def _is_core(path: str) -> bool:
     parts = path.lower().split("/")
-    return any(seg in parts for seg in ["core", "engine", "pipeline", "runtime", "bootstrap"]) \
-        and not _is_test(path)
+    keywords = {"core", "engine", "pipeline", "runtime", "bootstrap"}
+    return any(p in keywords for p in parts) and not _is_test(path)
 
 def _is_support(path: str) -> bool:
     parts = path.lower().split("/")
-    return any(seg in parts for seg in [
+    keywords = {
         "util", "utils", "helper", "helpers", "common", "shared",
-        "plugin", "plugins", "agent", "agents", "cli", "cmd",
+        "plugin", "plugins", "agent", "agents", "cli", "cmd", "bin",
         "api", "route", "routes", "server", "handler", "handlers",
         "model", "models", "schema", "schemas", "config", "logger",
-    ]) and not _is_test(path) and not _is_core(path)
+        "state", "store", "service", "services",
+    }
+    return any(p in keywords for p in parts) and not _is_test(path) and not _is_core(path)
 
 def _is_test(path: str) -> bool:
     parts = path.lower().split("/")
     name = parts[-1]
-    return any(seg in parts for seg in ["test", "tests", "spec", "specs", "__tests__"]) \
-        or ".test." in name or ".spec." in name
+    return (
+        any(p in {"test", "tests", "spec", "specs", "__tests__"} for p in parts)
+        or ".test." in name
+        or ".spec." in name
+    )
 
 def _is_doc(path: str) -> bool:
     parts = path.lower().split("/")
-    return any(seg in parts for seg in ["doc", "docs", "example", "examples", "demo", "notebook"])
+    return any(p in {"doc", "docs", "example", "examples", "demo", "notebook"} for p in parts)
