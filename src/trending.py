@@ -10,7 +10,7 @@ import requests
 from datetime import datetime, timedelta
 from pathlib import Path
 
-GITHUB_TOKEN = os.environ["GITHUB_TOKEN"]
+GITHUB_TOKEN = os.environ["PAT_TOKEN"]
 SEEN_FILE = Path(__file__).parent.parent / "seen_repos.json"
 
 CATEGORIES = [
