@@ -13,18 +13,14 @@ import json
 import time
 from cerebras.cloud.sdk import Cerebras
 
-client = Cerebras(
-    api_key=os.environ["CEREBRAS_API_KEY"],
-    timeout=60,       # FIX: hard 60s timeout per request — prevents silent hangs
-    max_retries=0,    # FIX: we handle retries ourselves; don't let SDK double-retry
-)
+client = Cerebras(api_key=os.environ["CEREBRAS_API_KEY"])
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> str:
-    """Call Cerebras with retry on 429/timeout. Fails fast on other errors."""
-    max_retries = 4
+    """Call Cerebras with automatic retry on 429 rate limit."""
+    max_retries = 5
     for attempt in range(max_retries):
         try:
             response = client.chat.completions.create(
@@ -35,28 +31,14 @@ def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> s
             )
             return response.choices[0].message.content.strip()
         except Exception as e:
-            err = str(e).lower()
-            is_retryable = any(x in err for x in ("429", "too_many_requests", "queue_exceeded", "timeout", "timed out"))
-            if is_retryable and attempt < max_retries - 1:
-                wait = 15 * (attempt + 1)   # 15s, 30s, 45s
-                print(f"  [rate limit / timeout] waiting {wait}s (attempt {attempt + 1}/{max_retries})...")
+            err = str(e)
+            if "429" in err or "too_many_requests" in err or "queue_exceeded" in err:
+                wait = (attempt + 1) * 8  # 8s, 16s, 24s, 32s, 40s
+                print(f"  [rate limit] waiting {wait}s before retry {attempt + 1}/{max_retries}...")
                 time.sleep(wait)
                 continue
             raise
-    raise RuntimeError("Cerebras: max retries exceeded")
-
-
-def _repair_json(raw: str) -> str:
-    for closing in ("}", "]"):
-        idx = raw.rfind(closing)
-        if idx != -1:
-            candidate = raw[: idx + 1]
-            try:
-                json.loads(candidate)
-                return candidate
-            except json.JSONDecodeError:
-                continue
-    return raw
+    raise RuntimeError("Cerebras rate limit: max retries exceeded")
 
 
 def _parse_json(raw: str) -> dict | list:
@@ -65,11 +47,7 @@ def _parse_json(raw: str) -> dict | list:
         raw = parts[1] if len(parts) > 1 else raw
         if raw.startswith("json"):
             raw = raw[4:]
-    raw = raw.strip()
-    try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
-        return json.loads(_repair_json(raw))
+    return json.loads(raw.strip())
 
 
 def _source_context_block(analysis: dict) -> str:
@@ -200,7 +178,7 @@ def get_profile(category: str) -> dict:
 PLAN_SYSTEM = """You are a senior software architect designing real open-source projects.
 You have access to source code from a trending repo for reference — study its patterns.
 Produce realistic file trees, not toy examples.
-Respond ONLY with valid JSON. Always close every brace and bracket — never truncate."""
+Respond ONLY with valid JSON."""
 
 
 def plan_project(analysis: dict) -> dict:
@@ -226,10 +204,9 @@ CATEGORY CONVENTIONS:
 - Style: {profile['style']}
 
 REQUIREMENTS:
-- 8-12 files across proper nested directories
+- 12-18 files across proper nested directories
 - Always include: README.md, .github/workflows/ci.yml, dependency file, 2+ test files, 1 example
 - "purpose" must be specific to THIS project
-- Keep each "purpose" value under 10 words to stay within token budget
 
 Return ONLY this JSON:
 {{
@@ -245,7 +222,7 @@ Return ONLY this JSON:
 
     raw = _call(
         [{"role": "system", "content": PLAN_SYSTEM}, {"role": "user", "content": prompt}],
-        max_tokens=3000,
+        max_tokens=2048,
         temperature=0.6,
     )
     return _parse_json(raw)
@@ -266,6 +243,7 @@ def generate_file(
     plan: dict,
     analysis: dict,
     already_written: dict,
+    github_username: str = "",
 ) -> str:
     profile = get_profile(analysis["category"])
     source_block = _source_context_block(analysis)
@@ -277,7 +255,9 @@ def generate_file(
             preview = content[:500].replace("\n", "\\n")
             context += f"\n// {p}\n{preview}...\n"
 
+    gh_user = github_username or os.environ.get("GH_USERNAME", "your-username")
     prompt = f"""Project: {plan['repo_name']}
+GitHub username: {gh_user}
 Language: {plan['language']}
 Category: {analysis['category']}
 Style: {profile['style']}
@@ -292,7 +272,7 @@ Purpose: {purpose}
 Rules:
 - Complete working code, not a stub
 - Match language, imports, and naming of existing files
-- README.md: badges, install, usage with real examples, contributing section
+- README.md: badges, install, usage with real examples, contributing section. Use github_username in all URLs (github.com/{github_username}/{plan['repo_name']}) — never use "your-org" or placeholder text
 - Test files: real assertions testing real behaviour
 - CI yaml: working pipeline for this project's language and test framework
 - Comments like a real dev: brief, only where non-obvious
@@ -309,7 +289,7 @@ Rules:
 
 VALIDATE_SYSTEM = """You are a code reviewer doing a final pass before shipping.
 Fix real problems only: broken imports, mismatched names, leftover stubs, README mismatches.
-Respond ONLY with valid JSON. Always close every brace and bracket — never truncate."""
+Respond ONLY with valid JSON."""
 
 
 def validate_and_fix(files: dict, readme: str, plan: dict, analysis: dict) -> tuple[dict, str]:
@@ -345,7 +325,7 @@ Return ONLY this JSON (empty list if no issues):
     try:
         raw = _call(
             [{"role": "system", "content": VALIDATE_SYSTEM}, {"role": "user", "content": prompt}],
-            max_tokens=4096,
+            max_tokens=2048,
             temperature=0.2,
         )
         result = _parse_json(raw)
@@ -398,11 +378,12 @@ def generate_project(analysis: dict) -> dict:
         purpose = spec["purpose"]
         print(f"  [{i+1}/{len(file_tree)}] {path}")
         try:
-            files[path] = generate_file(path, purpose, plan, analysis, files)
+            files[path] = generate_file(path, purpose, plan, analysis, files, github_username=os.environ.get("GH_USERNAME", ""))
         except Exception as e:
             print(f"  ⚠ Failed {path}: {e}")
             files[path] = f"# {path}\n# {purpose}\n"
-        time.sleep(8)   # FIX: was 4s — give Cerebras more breathing room between files
+        # Consistent delay between every file to reduce 429s
+        time.sleep(4)
 
     readme = files.pop("README.md", f"# {plan['repo_name']}\n\n{plan['description']}\n")
 
