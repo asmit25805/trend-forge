@@ -33,7 +33,7 @@ def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> s
         except Exception as e:
             err = str(e)
             if "429" in err or "too_many_requests" in err or "queue_exceeded" in err:
-                wait = (attempt + 1) * 8  # 8s, 16s, 24s, 32s, 40s
+                wait = (attempt + 1) * 8
                 print(f"  [rate limit] waiting {wait}s before retry {attempt + 1}/{max_retries}...")
                 time.sleep(wait)
                 continue
@@ -41,13 +41,37 @@ def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> s
     raise RuntimeError("Cerebras rate limit: max retries exceeded")
 
 
+def _repair_json(raw: str) -> str:
+    """
+    Trim back to the last complete top-level closing brace/bracket so that
+    a response truncated mid-stream by a token limit can still be parsed.
+    Tries } first (objects), then ] (arrays).
+    """
+    for closing in ("}", "]"):
+        idx = raw.rfind(closing)
+        if idx != -1:
+            candidate = raw[: idx + 1]
+            try:
+                json.loads(candidate)
+                return candidate
+            except json.JSONDecodeError:
+                continue
+    return raw
+
+
 def _parse_json(raw: str) -> dict | list:
+    """Strip markdown fences then parse JSON, with truncation recovery."""
     if raw.startswith("```"):
         parts = raw.split("```")
         raw = parts[1] if len(parts) > 1 else raw
         if raw.startswith("json"):
             raw = raw[4:]
-    return json.loads(raw.strip())
+    raw = raw.strip()
+
+    try:
+        return json.loads(raw)
+    except json.JSONDecodeError:
+        return json.loads(_repair_json(raw))
 
 
 def _source_context_block(analysis: dict) -> str:
@@ -178,7 +202,7 @@ def get_profile(category: str) -> dict:
 PLAN_SYSTEM = """You are a senior software architect designing real open-source projects.
 You have access to source code from a trending repo for reference — study its patterns.
 Produce realistic file trees, not toy examples.
-Respond ONLY with valid JSON."""
+Respond ONLY with valid JSON. Always close every brace and bracket — never truncate."""
 
 
 def plan_project(analysis: dict) -> dict:
@@ -207,6 +231,7 @@ REQUIREMENTS:
 - 12-18 files across proper nested directories
 - Always include: README.md, .github/workflows/ci.yml, dependency file, 2+ test files, 1 example
 - "purpose" must be specific to THIS project
+- Keep each "purpose" value short (under 12 words) to avoid hitting the token limit
 
 Return ONLY this JSON:
 {{
@@ -220,9 +245,10 @@ Return ONLY this JSON:
   ]
 }}"""
 
+    # FIX: was 2048 — too small for an 18-file plan with source context
     raw = _call(
         [{"role": "system", "content": PLAN_SYSTEM}, {"role": "user", "content": prompt}],
-        max_tokens=2048,
+        max_tokens=3000,
         temperature=0.6,
     )
     return _parse_json(raw)
@@ -286,7 +312,7 @@ Rules:
 
 VALIDATE_SYSTEM = """You are a code reviewer doing a final pass before shipping.
 Fix real problems only: broken imports, mismatched names, leftover stubs, README mismatches.
-Respond ONLY with valid JSON."""
+Respond ONLY with valid JSON. Always close every brace and bracket — never truncate."""
 
 
 def validate_and_fix(files: dict, readme: str, plan: dict, analysis: dict) -> tuple[dict, str]:
@@ -379,7 +405,6 @@ def generate_project(analysis: dict) -> dict:
         except Exception as e:
             print(f"  ⚠ Failed {path}: {e}")
             files[path] = f"# {path}\n# {purpose}\n"
-        # Consistent delay between every file to reduce 429s
         time.sleep(4)
 
     readme = files.pop("README.md", f"# {plan['repo_name']}\n\n{plan['description']}\n")
