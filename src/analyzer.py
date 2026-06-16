@@ -33,10 +33,6 @@ SKIP_NAMES = {
 # ── GitHub source code fetching ───────────────────────────────────────────────
 
 def fetch_file_tree(full_name: str) -> list[dict]:
-    """
-    Fetch the full file tree of a repo using the Git Trees API.
-    Returns list of {path, type, size} for all files.
-    """
     url = f"https://api.github.com/repos/{full_name}/git/trees/HEAD?recursive=1"
     try:
         resp = requests.get(url, headers=HEADERS)
@@ -53,11 +49,6 @@ def fetch_file_tree(full_name: str) -> list[dict]:
 
 
 def pick_files_to_read(tree: list[dict], max_files: int = 6) -> list[str]:
-    """
-    Pick the most informative source files to read.
-    Priority: entry points > core logic > config > tests (last).
-    Skips huge files (>30KB), lock files, and non-readable extensions.
-    """
     import os as _os
 
     priority = []
@@ -68,12 +59,10 @@ def pick_files_to_read(tree: list[dict], max_files: int = 6) -> list[str]:
         path = item["path"]
         size = item.get("size", 0)
 
-        # Skip directories we don't care about
         parts = path.split("/")
         if any(p in skip_dirs for p in parts):
             continue
 
-        # Skip huge files and lock files
         if size > 30_000:
             continue
         filename = _os.path.basename(path)
@@ -84,7 +73,6 @@ def pick_files_to_read(tree: list[dict], max_files: int = 6) -> list[str]:
         if ext not in READABLE_EXTENSIONS:
             continue
 
-        # Prioritise entry points and core modules
         name_lower = filename.lower()
         is_entry = any(n in name_lower for n in ["main", "index", "app", "cli", "server", "run", "core", "engine"])
         is_test = any(n in name_lower for n in ["test", "spec", "__test__"])
@@ -95,31 +83,28 @@ def pick_files_to_read(tree: list[dict], max_files: int = 6) -> list[str]:
         elif not is_test and not is_config:
             secondary.append(path)
 
-    # Take up to max_files: prioritise entry points, fill with secondary
     chosen = priority[:3] + secondary[:max_files - len(priority[:3])]
     return chosen[:max_files]
 
 
 def fetch_file_content(full_name: str, path: str) -> str:
-    """Fetch raw content of a single file from GitHub."""
     url = f"https://api.github.com/repos/{full_name}/contents/{path}"
     try:
         resp = requests.get(url, headers={**HEADERS, "Accept": "application/vnd.github.raw"})
         if resp.status_code == 200:
-            return resp.text[:4000]  # cap per file at 4KB
+            return resp.text[:4000]
     except Exception:
         pass
     return ""
 
 
 def fetch_recent_commits(full_name: str, limit: int = 5) -> list[str]:
-    """Fetch recent commit messages to understand development direction."""
     url = f"https://api.github.com/repos/{full_name}/commits"
     try:
         resp = requests.get(url, headers=HEADERS, params={"per_page": limit})
         if resp.status_code == 200:
             return [
-                c["commit"]["message"].split("\n")[0]  # first line only
+                c["commit"]["message"].split("\n")[0]
                 for c in resp.json()
             ]
     except Exception:
@@ -128,13 +113,6 @@ def fetch_recent_commits(full_name: str, limit: int = 5) -> list[str]:
 
 
 def gather_repo_context(repo: dict) -> dict:
-    """
-    Pull everything useful from the trending repo:
-    - README (already fetched)
-    - Directory tree (structure overview)
-    - Top source files (actual implementation)
-    - Recent commit messages (development direction)
-    """
     full_name = repo["full_name"]
     print(f"[analyzer] Fetching source context for {full_name}...")
 
@@ -153,10 +131,7 @@ def gather_repo_context(repo: dict) -> dict:
     commits = fetch_recent_commits(full_name, limit=5)
     print(f"[analyzer]   Recent commits: {len(commits)}")
 
-    # Build a clean directory tree summary (top 40 paths)
-    tree_summary = "\n".join(
-        item["path"] for item in tree[:40]
-    )
+    tree_summary = "\n".join(item["path"] for item in tree[:40])
 
     return {
         "tree_summary": tree_summary,
@@ -165,12 +140,25 @@ def gather_repo_context(repo: dict) -> dict:
     }
 
 
+# ── JSON recovery ─────────────────────────────────────────────────────────────
+
+def _repair_json(raw: str) -> str:
+    """
+    If the model truncated the JSON mid-stream, trim back to the last
+    complete top-level closing brace so json.loads has a chance to succeed.
+    """
+    idx = raw.rfind("}")
+    if idx != -1:
+        return raw[: idx + 1]
+    return raw
+
+
 # ── Cerebras analysis ─────────────────────────────────────────────────────────
 
 SYSTEM_PROMPT = """You are a senior software architect reverse-engineering trending GitHub repositories.
 You have access to actual source code, not just the README.
 Extract deep technical understanding: architecture patterns, implementation choices, what makes this genuinely good.
-Respond ONLY with valid JSON."""
+Respond ONLY with valid JSON. Never truncate — always close every brace and bracket."""
 
 ANALYSIS_SCHEMA = """
 {
@@ -194,7 +182,6 @@ def analyze_repo(repo: dict) -> dict:
     """
     context = gather_repo_context(repo)
 
-    # Build source code section
     source_section = ""
     for path, content in context["source_files"].items():
         source_section += f"\n--- {path} ---\n{content}\n"
@@ -223,7 +210,8 @@ SOURCE CODE:
 Based on the actual code above, return ONLY JSON matching this schema:
 {ANALYSIS_SCHEMA}
 
-Be specific — reference actual patterns, function names, or architecture choices you saw in the code."""
+Be specific — reference actual patterns, function names, or architecture choices you saw in the code.
+Important: produce complete, valid JSON — do not truncate any strings or arrays."""
 
     response = client.chat.completions.create(
         model="gpt-oss-120b",
@@ -231,24 +219,31 @@ Be specific — reference actual patterns, function names, or architecture choic
             {"role": "system", "content": SYSTEM_PROMPT},
             {"role": "user", "content": prompt},
         ],
-        max_tokens=1500,
+        max_tokens=2048,   # FIX: was 1500, too small for the full schema
         temperature=0.3,
     )
 
     raw = response.choices[0].message.content.strip()
+
+    # Strip markdown code fences if present
     if raw.startswith("```"):
         raw = raw.split("```")[1]
         if raw.startswith("json"):
             raw = raw[4:]
     raw = raw.strip()
 
-    analysis = json.loads(raw)
+    # FIX: if the model still truncated, trim back to the last valid closing brace
+    try:
+        analysis = json.loads(raw)
+    except json.JSONDecodeError:
+        raw = _repair_json(raw)
+        analysis = json.loads(raw)  # let this raise naturally if still broken
+
     analysis["source_repo"] = repo["full_name"]
     analysis["source_url"] = repo["html_url"]
     analysis["source_stars"] = repo["stars"]
     analysis["category"] = repo["category"]
 
-    # Pass source context through to generator for even richer generation
     analysis["_source_context"] = {
         "tree_summary": context["tree_summary"],
         "source_files": context["source_files"],
