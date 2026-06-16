@@ -1,8 +1,10 @@
 """
 Creates a new GitHub repo and pushes all generated files.
 Spreads commits across logical groups to look like real development history.
-Handles 404s on nested paths (GitHub needs a moment after repo creation)
-and 429 rate limits with exponential backoff.
+
+Key fix: .github/ files are pushed immediately after README in the same
+initial batch — GitHub's Contents API reliably handles them once the
+main branch exists.
 """
 
 import os
@@ -20,123 +22,6 @@ HEADERS = {
     "X-GitHub-Api-Version": "2022-11-28",
 }
 
-COMMIT_GROUPS = [
-    {
-        "match": lambda p: p == "README.md",
-        "message": "Initial commit",
-    },
-    {
-        "match": lambda p: any(p.endswith(f) for f in [
-            "requirements.txt", "package.json", "go.mod", "Cargo.toml",
-            "pyproject.toml", ".gitignore", ".env.example", "Makefile",
-            "tsconfig.json", "LICENSE",
-        ]),
-        "message": "chore: project setup and dependencies",
-    },
-    {
-        "match": lambda p: p.startswith(".github/"),
-        "message": "ci: add GitHub Actions workflow",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["core", "engine", "pipeline", "runtime", "bootstrap"]),
-        "message": "feat: implement core engine",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["util", "helper", "common", "shared", "logger", "environment"]),
-        "message": "feat: add utility modules",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["cli", "cmd", "command"]),
-        "message": "feat: add CLI interface",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["api", "route", "server", "handler"]),
-        "message": "feat: add API layer",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["model", "schema", "type"]),
-        "message": "feat: define data models",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["plugin", "agent"]),
-        "message": "feat: add plugin system",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["config", "setting"]),
-        "message": "feat: add configuration handling",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["test", "spec"]),
-        "message": "test: add test suite",
-    },
-    {
-        "match": lambda p: any(seg in p for seg in ["doc", "example", "demo", "notebook"]),
-        "message": "docs: add examples and documentation",
-    },
-]
-
-FALLBACK_GROUP = {"message": "feat: add remaining modules"}
-
-
-def _group_files(files: dict) -> list[tuple[str, list]]:
-    assigned = set()
-    groups = []
-
-    for group in COMMIT_GROUPS:
-        matched = [
-            (path, content)
-            for path, content in files.items()
-            if group["match"](path) and path not in assigned
-        ]
-        if matched:
-            for path, _ in matched:
-                assigned.add(path)
-            groups.append((group["message"], matched))
-
-    remaining = [(p, c) for p, c in files.items() if p not in assigned]
-    if remaining:
-        groups.append((FALLBACK_GROUP["message"], remaining))
-
-    return groups
-
-
-def _push_file_with_retry(full_name: str, path: str, content: str, message: str, max_retries: int = 6):
-    """
-    Push a single file with retry on both 429 (rate limit) and 404
-    (GitHub sometimes needs a moment after repo creation for nested paths).
-    """
-    url = f"https://api.github.com/repos/{full_name}/contents/{path}"
-    encoded = base64.b64encode(content.encode("utf-8")).decode("utf-8")
-    payload = {"message": message, "content": encoded, "branch": "main"}
-
-    existing = requests.get(url, headers=HEADERS)
-    if existing.status_code == 200:
-        payload["sha"] = existing.json()["sha"]
-
-    for attempt in range(max_retries):
-        resp = requests.put(url, headers=HEADERS, json=payload)
-
-        if resp.status_code in (200, 201):
-            return  # success
-
-        if resp.status_code == 429:
-            wait = (attempt + 1) * 10
-            print(f"  [rate limit] waiting {wait}s (attempt {attempt + 1}/{max_retries})...")
-            time.sleep(wait)
-            continue
-
-        if resp.status_code == 404 and attempt < max_retries - 1:
-            # GitHub repo/branch not fully ready yet — wait and retry
-            wait = (attempt + 1) * 5
-            print(f"  [404 on {path}] repo not ready yet, waiting {wait}s...")
-            time.sleep(wait)
-            continue
-
-        # Any other error — raise immediately
-        resp.raise_for_status()
-
-    raise RuntimeError(f"Failed to push {path} after {max_retries} attempts")
-
 
 def create_repo(name: str, description: str, topics: list[str]) -> str:
     url = "https://api.github.com/user/repos"
@@ -151,7 +36,7 @@ def create_repo(name: str, description: str, topics: list[str]) -> str:
     }
     resp = requests.post(url, headers=HEADERS, json=payload)
     if resp.status_code == 422:
-        suffix = datetime.utcnow().strftime("%m%d")
+        suffix = datetime.utcnow().strftime("%m%d%H%M")
         payload["name"] = f"{name}-{suffix}"
         resp = requests.post(url, headers=HEADERS, json=payload)
     resp.raise_for_status()
@@ -168,7 +53,44 @@ def _set_topics(full_name: str, topics: list[str]):
     requests.put(url, headers=HEADERS, json={"names": clean})
 
 
+def _push_file(full_name: str, path: str, content: str, message: str, max_retries: int = 4):
+    """Push a single file with retry on 429 rate limit only."""
+    url = f"https://api.github.com/repos/{full_name}/contents/{path}"
+    encoded = base64.b64encode(content.encode("utf-8")).decode("utf-8")
+    payload = {"message": message, "content": encoded, "branch": "main"}
+
+    existing = requests.get(url, headers=HEADERS)
+    if existing.status_code == 200:
+        payload["sha"] = existing.json()["sha"]
+
+    for attempt in range(max_retries):
+        resp = requests.put(url, headers=HEADERS, json=payload)
+        if resp.status_code in (200, 201):
+            return
+        if resp.status_code == 429:
+            wait = (attempt + 1) * 10
+            print(f"  [rate limit] waiting {wait}s...")
+            time.sleep(wait)
+            continue
+        resp.raise_for_status()
+
+    raise RuntimeError(f"Failed to push {path} after {max_retries} attempts")
+
+
 def push_project(project: dict) -> str:
+    """
+    Push all files in a logical commit order.
+
+    Commit order:
+      1. README.md                  — creates the main branch
+      2. .github/ files             — pushed immediately after, branch now exists
+      3. Config/dependency files    — package.json, requirements.txt etc
+      4. Core source files          — src/core, engine, pipeline etc
+      5. Supporting modules         — utils, helpers, plugins etc
+      6. Tests                      — test/, spec/
+      7. Docs and examples          — docs/, examples/
+      8. Everything else
+    """
     full_name = create_repo(
         project["repo_name"],
         project.get("description", ""),
@@ -176,39 +98,83 @@ def push_project(project: dict) -> str:
     )
 
     readme = project.get("readme", f"# {project['repo_name']}\n")
-    all_files = {"README.md": readme, **project.get("files", {})}
+    files: dict = project.get("files", {})
 
-    groups = _group_files(all_files)
-    total = sum(len(g[1]) for g in groups)
-    print(f"[pusher] Pushing {total} files across {len(groups)} commits...")
+    # Sort all files into ordered buckets
+    github_files   = {p: c for p, c in files.items() if p.startswith(".github/")}
+    config_files   = {p: c for p, c in files.items() if _is_config(p)}
+    core_files     = {p: c for p, c in files.items() if _is_core(p)}
+    support_files  = {p: c for p, c in files.items() if _is_support(p)}
+    test_files     = {p: c for p, c in files.items() if _is_test(p)}
+    doc_files      = {p: c for p, c in files.items() if _is_doc(p)}
+    assigned = (
+        set(github_files) | set(config_files) | set(core_files) |
+        set(support_files) | set(test_files) | set(doc_files)
+    )
+    other_files = {p: c for p, c in files.items() if p not in assigned}
 
-    # Push README first to create the main branch, then wait for GitHub
-    # to fully initialise the repo before pushing nested paths
-    print(f"\n[pusher] Commit: 'Initial commit' (1 file)")
-    _push_file_with_retry(full_name, "README.md", readme, "Initial commit")
-    print(f"  ✓ README.md")
-    print(f"[pusher] Waiting for repo to initialise...")
-    time.sleep(5)  # give GitHub a moment before pushing nested paths
+    batches = [
+        ("Initial commit",                        {"README.md": readme}),
+        ("ci: add GitHub Actions workflow",        github_files),
+        ("chore: project setup and dependencies", config_files),
+        ("feat: implement core engine",            core_files),
+        ("feat: add supporting modules",           support_files),
+        ("test: add test suite",                   test_files),
+        ("docs: add examples and documentation",   doc_files),
+        ("feat: add remaining modules",            other_files),
+    ]
 
-    pushed = 1
-    for commit_msg, file_batch in groups:
-        # Skip README — already pushed above
-        batch = [(p, c) for p, c in file_batch if p != "README.md"]
+    total = 1 + sum(len(b[1]) for b in batches[1:])
+    print(f"[pusher] Pushing {total} files across {len([b for b in batches if b[1]])} commits...")
+
+    for commit_msg, batch in batches:
         if not batch:
             continue
-
         print(f"\n[pusher] Commit: '{commit_msg}' ({len(batch)} file(s))")
-        for path, content in batch:
+        for path, content in batch.items():
             if not isinstance(content, str):
                 content = str(content)
-            _push_file_with_retry(full_name, path, content, commit_msg)
+            _push_file(full_name, path, content, commit_msg)
             print(f"  ✓ {path}")
-            pushed += 1
-            time.sleep(1)  # steady pace between files
-
-        time.sleep(2)  # pause between commit groups
+            time.sleep(1)
+        time.sleep(2)
 
     repo_url = f"https://github.com/{full_name}"
-    print(f"\n[pusher] ✅ {pushed} files pushed across {len(groups)} commits")
-    print(f"[pusher] Live at: {repo_url}")
+    print(f"\n[pusher] ✅ Done! Live at: {repo_url}")
     return repo_url
+
+
+# ── File classification helpers ───────────────────────────────────────────────
+
+def _is_config(path: str) -> bool:
+    name = path.split("/")[-1].lower()
+    return any(name == f for f in [
+        "package.json", "requirements.txt", "go.mod", "cargo.toml",
+        "pyproject.toml", ".gitignore", ".env.example", "makefile",
+        "tsconfig.json", "license", "licence", "setup.py", "setup.cfg",
+        "dockerfile", ".dockerignore", "docker-compose.yml",
+    ])
+
+def _is_core(path: str) -> bool:
+    parts = path.lower().split("/")
+    return any(seg in parts for seg in ["core", "engine", "pipeline", "runtime", "bootstrap"]) \
+        and not _is_test(path)
+
+def _is_support(path: str) -> bool:
+    parts = path.lower().split("/")
+    return any(seg in parts for seg in [
+        "util", "utils", "helper", "helpers", "common", "shared",
+        "plugin", "plugins", "agent", "agents", "cli", "cmd",
+        "api", "route", "routes", "server", "handler", "handlers",
+        "model", "models", "schema", "schemas", "config", "logger",
+    ]) and not _is_test(path) and not _is_core(path)
+
+def _is_test(path: str) -> bool:
+    parts = path.lower().split("/")
+    name = parts[-1]
+    return any(seg in parts for seg in ["test", "tests", "spec", "specs", "__tests__"]) \
+        or ".test." in name or ".spec." in name
+
+def _is_doc(path: str) -> bool:
+    parts = path.lower().split("/")
+    return any(seg in parts for seg in ["doc", "docs", "example", "examples", "demo", "notebook"])
