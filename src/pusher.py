@@ -52,8 +52,7 @@ def _set_topics(full_name: str, topics: list[str]):
 def _push_file(full_name: str, path: str, content: str, message: str):
     """
     Push a single file. Retries on 429 (rate limit) and 404 (branch not
-    indexed yet). 404 retries use longer waits since GitHub needs time to
-    fully index the branch before nested paths like .github/ work.
+    indexed yet).
     """
     url = f"https://api.github.com/repos/{full_name}/contents/{path}"
     encoded = base64.b64encode(content.encode("utf-8")).decode("utf-8")
@@ -63,7 +62,7 @@ def _push_file(full_name: str, path: str, content: str, message: str):
     if existing.status_code == 200:
         payload["sha"] = existing.json()["sha"]
 
-    wait_404 = [5, 10, 15, 20, 30]   # up to ~80s total for nested paths
+    wait_404 = [5, 10, 15, 20, 30, 45]
     wait_429 = [10, 20, 30, 40]
 
     attempt_404 = 0
@@ -100,7 +99,8 @@ def push_project(project: dict) -> str:
     """
     Push all files in a logical commit order.
 
-    README goes first to create the main branch.
+    README and .github/ files go together in the first commit so the branch
+    is fully created before any subsequent commits touch nested paths.
     Everything else follows grouped into meaningful commits.
     """
     full_name = create_repo(
@@ -125,9 +125,14 @@ def push_project(project: dict) -> str:
     )
     other_files = {p: c for p, c in files.items() if p not in assigned}
 
+    # FIX: .github/ files are pushed in the same first commit as README so
+    # the branch is fully indexed before any later commits try to write to it.
+    # Pushing .github/workflows/* in a separate second commit caused a 404
+    # race condition because GitHub hadn't finished indexing the new branch.
+    initial_batch = {"README.md": readme, **github_files}
+
     batches = [
-        ("Initial commit",                        {"README.md": readme}),
-        ("ci: add GitHub Actions workflow",        github_files),
+        ("Initial commit",                        initial_batch),
         ("chore: project setup and dependencies", config_files),
         ("feat: implement core engine",            core_files),
         ("feat: add supporting modules",           support_files),
@@ -136,11 +141,11 @@ def push_project(project: dict) -> str:
         ("feat: add remaining modules",            other_files),
     ]
 
-    total = 1 + sum(len(b[1]) for b in batches[1:])
+    total = sum(len(b[1]) for b in batches)
     active = [b for b in batches if b[1]]
     print(f"[pusher] Pushing {total} files across {len(active)} commits...")
 
-    for i, (commit_msg, batch) in enumerate(batches):
+    for commit_msg, batch in batches:
         if not batch:
             continue
         print(f"\n[pusher] Commit: '{commit_msg}' ({len(batch)} file(s))")
