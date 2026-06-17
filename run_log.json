@@ -28,5 +28,15 @@
     "generated_url": "https://github.com/asmit25805/office-harness",
     "concept": "A Python\u2011based automation hub that drives WPS/Microsoft Office (Writer, Calc, Impress) via COM, using JSON\u2011driven templates and a CLI to expose 47 commands for document creation, styling, and export.",
     "inspiration_angle": "Create a cross\u2011platform counterpart that targets LibreOffice/OpenOffice via the UNO API, preserving the JSON\u2011driven pipeline but adding a pluggable backend selector (COM vs. UNO). This would open the automation hub to Linux/macOS users and enable hybrid workflows where the same JSON templates drive both Windows Office and LibreOffice, differentiating the project while reusing the core design system."
+  },
+  {
+    "date": "2026-06-17T12:29:33.220417",
+    "category": "llm",
+    "source_repo": "DietrichGebert/ponytail",
+    "source_stars": 28802,
+    "generated_repo": "deptrim",
+    "generated_url": "https://github.com/asmit25805/deptrim",
+    "concept": "A portable skill/plugin that injects a lazy\u2011senior\u2011developer rule set into LLM coding agents, automatically steering them toward minimal, dependency\u2011free code.",
+    "inspiration_angle": "Instead of a static prompt library, Ponytail treats the lazy\u2011senior\u2011dev principle as a first\u2011class, toggleable skill layer that can be injected into any LLM agent at runtime, providing a universal, cross\u2011agent governance mechanism for code quality and cost efficiency."
   }
 ]

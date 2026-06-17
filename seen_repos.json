@@ -2,7 +2,8 @@
   "repos": [
     "webc-site/math",
     "yb2460/harness-anything",
+    "DietrichGebert/ponytail",
     "code-yeongyu/lazycodex"
   ],
-  "last_category_index": 4
+  "last_category_index": 5
 }
