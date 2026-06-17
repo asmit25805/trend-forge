@@ -2,7 +2,7 @@
 Four-phase project generator using Cerebras.
 
 Phase 0: Design doc — API contracts, data models, module interfaces
-Phase 1: Plan       — file tree informed by design doc + source code
+Phase 1: Plan       — file tree informed by design doc
 Phase 2: Generate   — each file written against the spec
 Phase 3: Validate   — static consistency check
 
@@ -16,15 +16,17 @@ from cerebras.cloud.sdk import Cerebras
 
 client = Cerebras(
     api_key=os.environ["CEREBRAS_API_KEY"],
-    timeout=60,
+    timeout=120,   # raised from 60 — we want quality, not speed
     max_retries=0,
 )
+
+GH_USER = os.environ.get("GH_USERNAME", "")
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 
 def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> str:
-    for attempt in range(4):
+    for attempt in range(5):
         try:
             resp = client.chat.completions.create(
                 model="gpt-oss-120b",
@@ -38,9 +40,9 @@ def _call(messages: list, max_tokens: int = 2048, temperature: float = 0.5) -> s
             retryable = any(x in err for x in (
                 "429", "too_many_requests", "queue_exceeded", "timeout", "timed out"
             ))
-            if retryable and attempt < 3:
-                wait = 15 * (attempt + 1)
-                print(f"  [rate limit] waiting {wait}s (attempt {attempt+1}/4)...")
+            if retryable and attempt < 4:
+                wait = 20 * (attempt + 1)   # 20s, 40s, 60s, 80s
+                print(f"  [rate limit] waiting {wait}s (attempt {attempt+1}/5)...")
                 time.sleep(wait)
                 continue
             raise
@@ -77,11 +79,33 @@ def _source_context_block(analysis: dict) -> str:
     ctx = analysis.get("_source_context", {})
     if not ctx:
         return ""
-    block = "REFERENCE SOURCE CODE (study patterns, never copy verbatim):\n"
+    block = "REFERENCE SOURCE CODE (study the patterns and architecture, never copy verbatim):\n"
     block += f"\nDirectory structure:\n{ctx.get('tree_summary', '')[:600]}\n"
     for path, content in ctx.get("source_files", {}).items():
         block += f"\n--- {path} ---\n{content[:1000]}\n"
     return block
+
+
+def _install_cmd(language: str, repo_name: str) -> str:
+    lang = language.lower()
+    if "typescript" in lang or "javascript" in lang:
+        return f"npm install {repo_name}"
+    if "go" in lang:
+        return f"go get github.com/{GH_USER}/{repo_name}"
+    if "rust" in lang:
+        return f"cargo add {repo_name}"
+    return f"pip install {repo_name}"
+
+
+def _ci_setup(language: str) -> str:
+    lang = language.lower()
+    if "typescript" in lang or "javascript" in lang:
+        return "actions/setup-node@v4 with node-version 20, npm ci, npm run lint, npm test"
+    if "go" in lang:
+        return "actions/setup-go@v5, go vet ./..., go test ./..."
+    if "rust" in lang:
+        return "actions-rs/toolchain, cargo clippy, cargo test"
+    return "actions/setup-python@v5, pip install -e .[dev], ruff check ., pytest -q"
 
 
 # ── Category style profiles ───────────────────────────────────────────────────
@@ -116,8 +140,8 @@ CATEGORY_PROFILES = {
         "code_patterns": "event emitter for agent lifecycle, json schema for tool validation, sqlite for persistence",
     },
     "web": {
-        "language_hint": "TypeScript with Next.js or Python with FastAPI",
-        "structure_hint": "app/ with routing, components/, lib/, api/",
+        "language_hint": "TypeScript",
+        "structure_hint": "src/core/, src/cli/, src/plugins/, tests/",
         "quality_bar": "No hydration errors. Loading states everywhere. Error boundaries that recover.",
         "style": "Production patterns. Real optimistic updates. Accessible by default.",
         "code_patterns": "zod for validation, React Query/SWR for data, Tailwind for styling",
@@ -162,15 +186,15 @@ def get_profile(category: str) -> dict:
 
 DESIGN_SYSTEM = """You are a principal engineer designing a new open-source project.
 Your design documents are specific, concrete, and implementable.
-Respond ONLY with valid JSON."""
+Think deeply — what are the right abstractions? What are the failure modes?
+Respond ONLY with valid JSON. Never truncate."""
 
 
 def design_project(analysis: dict) -> dict:
     profile = get_profile(analysis["category"])
     source_block = _source_context_block(analysis)
-    gh_user = os.environ.get("GH_USERNAME", "")
 
-    prompt = f"""Design a new open-source project inspired by this trending repo.
+    prompt = f"""Design an original open-source project inspired by this trending repo.
 
 INSPIRATION: {analysis['source_repo']} (⭐{analysis['source_stars']})
 What it does: {analysis['concept']}
@@ -179,34 +203,34 @@ Architecture: {analysis.get('architecture_pattern', 'N/A')}
 Key insights from its code: {', '.join(analysis.get('key_implementation_insights', []))}
 Your original angle: {analysis['inspiration_angle']}
 Category: {analysis['category']}
-GitHub user who will own this: {gh_user}
+GitHub owner: {GH_USER}
 
 {source_block}
 
 QUALITY BAR: {profile['quality_bar']}
 CODE PATTERNS: {profile['code_patterns']}
 
-Design an ORIGINAL project (not a clone). Think: what would a senior engineer build
-over a weekend that solves a related problem in a different way?
+Design an ORIGINAL project — not a clone, not a fork. A senior engineer's weekend project
+that solves a related problem in a meaningfully different or better way.
 
 Return ONLY this JSON:
 {{
-  "project_name": "kebab-case",
-  "tagline": "one sharp sentence — what it does and why it matters",
+  "project_name": "kebab-case — short, memorable, describes what it does",
+  "tagline": "one sharp sentence — what it does and the specific benefit",
   "language": "primary language",
-  "github_user": "{gh_user}",
+  "github_user": "{GH_USER}",
   "core_abstractions": [
     {{
       "name": "ClassName or module_name",
-      "role": "what this abstraction does",
-      "key_methods": ["method_name(args) -> return_type: what it does"]
+      "role": "what this abstraction does in the system",
+      "key_methods": ["method_name(args) -> return_type: what it does and why"]
     }}
   ],
   "data_models": [
     {{
       "name": "ModelName",
-      "fields": ["field_name: type — what it represents"],
-      "used_by": ["which modules"]
+      "fields": ["field_name: type — what it represents and valid values"],
+      "used_by": ["which modules use this and how"]
     }}
   ],
   "module_interfaces": [
@@ -214,18 +238,20 @@ Return ONLY this JSON:
       "file": "src/core/engine.py",
       "exports": ["ClassName", "function_name"],
       "imports_from": ["other/module.py"],
-      "key_logic": "2-3 sentences on what the non-obvious logic does"
+      "key_logic": "2-3 sentences on the non-obvious logic — what makes this module interesting"
     }}
   ],
-  "data_flow": "step-by-step: input → processing → output",
-  "error_handling_strategy": "how errors propagate and surface to the user",
-  "key_design_decisions": ["specific decision and the concrete reason why"]
+  "data_flow": "numbered steps: 1. input arrives as X → 2. processed by Y → 3. output is Z",
+  "error_handling_strategy": "specific: which errors are fatal, which are retried, what the user sees",
+  "key_design_decisions": [
+    "decision: why this approach over the obvious alternative — be concrete"
+  ]
 }}"""
 
     print("[generator] Phase 0: Designing architecture...")
     raw = _call(
         [{"role": "system", "content": DESIGN_SYSTEM}, {"role": "user", "content": prompt}],
-        max_tokens=3000,
+        max_tokens=4000,   # raised — design doc needs space to be thorough
         temperature=0.5,
     )
     return _parse_json(raw)
@@ -233,14 +259,14 @@ Return ONLY this JSON:
 
 # ── Phase 1: File tree plan ───────────────────────────────────────────────────
 
-PLAN_SYSTEM = """You are a senior engineer turning a design document into a file tree.
-Every file must be justified by the design doc.
-Respond ONLY with valid JSON."""
+PLAN_SYSTEM = """You are a senior engineer turning a design document into a concrete file tree.
+Every file must be justified by the design. No speculative files.
+Respond ONLY with valid JSON. Never truncate."""
 
 
 def plan_project(analysis: dict, design: dict) -> dict:
     profile = get_profile(analysis["category"])
-    gh_user = design.get("github_user") or os.environ.get("GH_USERNAME", "")
+    language = design.get("language", "")
 
     abstractions = "\n".join(
         f"  - {a['name']}: {a['role']}" for a in design.get("core_abstractions", [])
@@ -249,45 +275,45 @@ def plan_project(analysis: dict, design: dict) -> dict:
         f"  - {m['file']}: exports {m['exports']}" for m in design.get("module_interfaces", [])
     )
 
-    prompt = f"""Turn this design into a concrete file tree.
+    prompt = f"""Turn this design document into a concrete file tree.
 
 PROJECT: {design['project_name']}
-GitHub: github.com/{gh_user}/{design['project_name']}
+URL: github.com/{GH_USER}/{design['project_name']}
 Tagline: {design['tagline']}
-Language: {design['language']}
+Language: {language}
 
 CORE ABSTRACTIONS:
 {abstractions}
 
-MODULE INTERFACES (these files MUST exist):
+MODULE INTERFACES (every one of these files MUST appear in the file tree):
 {modules}
 
 Data flow: {design['data_flow']}
-
-CATEGORY: {analysis['category']}
-Structure: {profile['structure_hint']}
+Category: {analysis['category']}
+Structure convention: {profile['structure_hint']}
 
 RULES:
-- Every file in module_interfaces must appear in the file tree
+- Every file listed in module_interfaces above must be in the file tree
 - Also include: README.md, .github/workflows/ci.yml, dependency file, 2 test files, 1 example
-- 10-14 files total
-- "purpose" must name specific classes/functions from the design doc
+- 10-14 files total — quality over quantity
+- "purpose" must reference specific class or function names from the design doc above
+- Do NOT include LICENSE as a file — it will be added separately
 
-Return ONLY this JSON:
+Return ONLY this JSON (no extra text, no truncation):
 {{
   "repo_name": "{design['project_name']}",
   "description": "{design['tagline']}",
-  "language": "{design['language']}",
-  "topics": ["tag1", "tag2", "tag3", "tag4", "tag5"],
+  "language": "{language}",
+  "topics": ["specific-tag", "specific-tag", "specific-tag", "specific-tag", "specific-tag"],
   "file_tree": [
-    {{"path": "README.md", "purpose": "specific to this project"}},
-    {{"path": "src/core/engine.py", "purpose": "implements EngineClass — specific detail"}}
+    {{"path": "README.md", "purpose": "project overview, install, quickstart, full API reference"}},
+    {{"path": "src/core/engine.py", "purpose": "implements Engine — orchestrates X and Y"}}
   ]
 }}"""
 
     raw = _call(
         [{"role": "system", "content": PLAN_SYSTEM}, {"role": "user", "content": prompt}],
-        max_tokens=2000,
+        max_tokens=2500,
         temperature=0.4,
     )
     return _parse_json(raw)
@@ -295,11 +321,11 @@ Return ONLY this JSON:
 
 # ── Phase 2: File generation ──────────────────────────────────────────────────
 
-FILE_SYSTEM = """You are writing code for a real open-source project.
-You write like a senior engineer — not verbose, not terse, just right.
-Real logic. Real error handling. No filler. No placeholder functions.
-You never mention AI, generation, or automation.
-Output raw file content only — no markdown fences, no explanation."""
+FILE_SYSTEM = """You are writing code for a real open-source project you care about.
+You write like a senior engineer on a good day — focused, precise, no fluff.
+Real logic. Real error handling. No stubs. No filler.
+You never mention AI, generation, or automation anywhere in the output.
+Output raw file content only — no markdown fences, no explanation before or after."""
 
 
 def generate_file(
@@ -311,140 +337,165 @@ def generate_file(
     already_written: dict,
 ) -> str:
     profile = get_profile(analysis["category"])
-    # FIX: only send source context in Phase 0 (design), not in every file
-    # generation call — this was the main cause of daily token quota exhaustion
-    gh_user = design.get("github_user") or os.environ.get("GH_USERNAME", "")
-    repo_name = plan["repo_name"]
     language = design.get("language", "")
+    repo_name = plan["repo_name"]
 
     design_context = f"""TECHNICAL DESIGN:
 Project: {design['project_name']} — {design['tagline']}
 Language: {language}
 Data flow: {design['data_flow']}
-Error strategy: {design['error_handling_strategy']}
-Core abstractions: {json.dumps(design.get('core_abstractions', []), indent=2)}
-Data models: {json.dumps(design.get('data_models', []), indent=2)}
-Key decisions: {chr(10).join('- ' + d for d in design.get('key_design_decisions', []))}"""
+Error handling: {design['error_handling_strategy']}
+
+Core abstractions:
+{json.dumps(design.get('core_abstractions', []), indent=2)}
+
+Data models:
+{json.dumps(design.get('data_models', []), indent=2)}
+
+Key design decisions:
+{chr(10).join('- ' + d for d in design.get('key_design_decisions', []))}"""
 
     written_context = ""
     if already_written:
-        written_context = "\nALREADY WRITTEN (match naming and imports exactly):\n"
+        written_context = "\nALREADY WRITTEN FILES (match naming, imports, and style exactly):\n"
         for p, content in list(already_written.items())[-4:]:
-            preview = content[:800].replace("\n", "\\n")
+            preview = content[:1000].replace("\n", "\\n")
             written_context += f"\n// {p}\n{preview}...\n"
 
-    # FIX: detect package manager from language so install instructions are correct
-    if "typescript" in language.lower() or "javascript" in language.lower():
-        install_cmd = f"npm install {repo_name}"
-    elif "go" in language.lower():
-        install_cmd = f"go get github.com/{gh_user}/{repo_name}"
-    elif "rust" in language.lower():
-        install_cmd = f"cargo add {repo_name}"
-    else:
-        install_cmd = f"pip install {repo_name}"
+    install = _install_cmd(language, repo_name)
+    ci_setup = _ci_setup(language)
 
-    prompt = f"""Write this file for project '{repo_name}'.
+    prompt = f"""Write this file for the project '{repo_name}' (github.com/{GH_USER}/{repo_name}).
 
 {design_context}
 
 {written_context}
 
-FILE: {path}
+FILE TO WRITE: {path}
 Purpose: {purpose}
 
 QUALITY BAR: {profile['quality_bar']}
 STYLE: {profile['style']}
 CODE PATTERNS: {profile['code_patterns']}
 
-STRICT RULES — violating any of these makes the output unusable:
+════════════════════════════════════════════════════════
+ABSOLUTE RULES — every violation makes the output unusable:
+════════════════════════════════════════════════════════
 
-1. README.md rules:
-   - All URLs must use github.com/{gh_user}/{repo_name} — never "your-org" or "your-username"
-   - Install command: {install_cmd}
-   - Quickstart must be copy-paste runnable with real output shown
-   - At least 120 lines
-   - No generic phrases like "easy to use", "lightweight", "powerful"
-   - Do NOT end the file with "*End of README*" or any similar marker
-   - Do NOT mix package managers — this is a {language} project, use the correct ecosystem only
+FORBIDDEN in ALL files:
+  ✗ Any mention of "Alice", "Bob", "example.com", "your-org", "your-username", "maintainer@"
+  ✗ Any fake email address
+  ✗ Any placeholder contact information
+  ✗ Phrases: "generated by", "auto-generated", "created by AI", "maintained by"
+  ✗ "End of README", "End of file", or any such markers
+  ✗ LICENSE file content (do not generate a license file)
 
-2. Test file rules:
-   - Import from the ACTUAL module paths in THIS project (not generic examples)
-   - Every test must assert real behaviour — no `assert True`, no `or True`, no placeholder assertions
-   - At least 5 meaningful test functions per file
-   - No comments like "# Import the package under test" or "# placeholder"
-   - Test functions must have descriptive names: test_pipeline_retries_on_timeout not test_basic
+README.md rules (only applies when writing README.md):
+  ✓ All GitHub URLs: github.com/{GH_USER}/{repo_name} — no exceptions
+  ✓ Install: {install}
+  ✓ Quickstart: copy-paste runnable, shows real expected output
+  ✓ Must include these sections: Overview, Features, Installation, Quickstart, API Reference, Contributing
+  ✓ API Reference must document every public class and function with its signature and what it does
+  ✓ Contributing section: fork → branch → test → PR — no fake maintainer contact
+  ✓ At least 150 lines
+  ✗ No fake "Created by" or "Maintained by" lines
+  ✗ No placeholder email addresses anywhere
+  ✗ No "*End of README*" or similar
 
-3. CI yaml rules:
-   - Use real action versions (actions/checkout@v4, actions/setup-python@v5 or actions/setup-node@v4)
-   - Install deps, lint, run tests — all three steps
-   - Match the CI toolchain to the language ({language})
+Test file rules (only applies when writing test files):
+  ✓ Import from actual module paths in THIS project
+  ✓ At least 6 test functions per file, each testing real behaviour
+  ✓ Descriptive names: test_engine_retries_on_transient_error not test_basic
+  ✓ Real assertions on real return values — not just assert True or assert result is not None
+  ✗ No "# placeholder", "# TODO", "# Import the package under test" comments
+  ✗ No `assert True`, `assert x or True`, `or True` patterns
 
-4. Source code rules:
-   - Implement the FULL logic from the design doc — no pass, no NotImplementedError, no stubs
-   - At least 80 lines of real code per source file
-   - Type annotations on every function signature
-   - Comments only where the logic is genuinely non-obvious — never describe what the next line does
+CI yaml rules (only applies when writing .github/workflows/ci.yml):
+  ✓ Trigger on push and pull_request to main
+  ✓ Steps: checkout → {ci_setup}
+  ✓ Pin all action versions (checkout@v4, setup-python@v5 or setup-node@v4)
+  ✗ No fake secrets or placeholder env vars
 
-Write the complete file now:"""
+Source code rules (applies to all .py / .ts / .go / .rs files):
+  ✓ Implement the FULL logic from the design doc for this module
+  ✓ At least 100 lines of real code
+  ✓ Type annotations on every function signature
+  ✓ Docstrings on public API only — one line, describes behaviour not implementation
+  ✓ Inline comments only where the logic is non-obvious
+  ✗ No `pass`, `raise NotImplementedError`, empty function bodies
+  ✗ Never describe what the next line does in a comment
+
+Write the complete file now. Do not add any preamble or explanation:"""
 
     return _call(
         [{"role": "system", "content": FILE_SYSTEM}, {"role": "user", "content": prompt}],
-        max_tokens=4096,
-        temperature=0.3,
+        max_tokens=6000,   # raised from 4096 — real files need real space
+        temperature=0.25,  # lower = more consistent, fewer hallucinations
     )
 
 
 # ── Phase 3: Validation pass ──────────────────────────────────────────────────
 
-VALIDATE_SYSTEM = """You are doing a final review before a repo goes public.
-You fix real problems only. Be specific and surgical.
-Respond ONLY with valid JSON."""
+VALIDATE_SYSTEM = """You are a senior engineer doing a final review before a repo goes public.
+You find and fix every real problem. No false positives, no missed issues.
+Respond ONLY with valid JSON. Never truncate the response."""
 
 
 def validate_and_fix(
     files: dict, readme: str, plan: dict, design: dict, analysis: dict
 ) -> tuple[dict, str]:
-    gh_user = design.get("github_user") or os.environ.get("GH_USERNAME", "")
-    repo_name = plan["repo_name"]
     language = design.get("language", "")
+    repo_name = plan["repo_name"]
+    install = _install_cmd(language, repo_name)
 
     design_summary = f"""Spec:
 - Language: {language}
 - Abstractions: {[a['name'] for a in design.get('core_abstractions', [])]}
 - Models: {[m['name'] for m in design.get('data_models', [])]}
-- Modules: {[m['file'] + ' exports ' + str(m['exports']) for m in design.get('module_interfaces', [])]}
-- GitHub: github.com/{gh_user}/{repo_name}"""
+- Modules: {[m['file'] + ' → exports ' + str(m['exports']) for m in design.get('module_interfaces', [])]}
+- Install command: {install}
+- GitHub: github.com/{GH_USER}/{repo_name}"""
 
-    snapshot = f"=== README.md ===\n{readme[:600]}\n"
+    # Send only first 400 chars per file to stay within token budget
+    # but still give the validator enough to spot real issues
+    snapshot = f"=== README.md (first 800 chars) ===\n{readme[:800]}\n"
     for path, content in files.items():
-        snapshot += f"\n=== {path} ===\n{content[:600]}\n"
+        snapshot += f"\n=== {path} (first 400 chars) ===\n{content[:400]}\n"
 
-    prompt = f"""Review this project before it goes public. Fix everything you find.
+    prompt = f"""Review this project and fix every problem you find before it goes public.
 
 {design_summary}
 
-FILES:
+FILE SNAPSHOTS:
 {snapshot}
 
-Find and fix ALL of the following:
-1. Any import that references a path or name not in the file tree
-2. Function/class called in one file but defined differently in another
-3. Stub implementations: pass, raise NotImplementedError, empty body, `or True` assertions
-4. Test comments like "# Import the package under test", "# placeholder", "# TODO"
-5. Test assertions that always pass (assert True, assert x or True, etc.)
-6. README URLs containing "your-org", "your-username" — replace with github.com/{gh_user}/{repo_name}
-7. README ending with "*End of README*" or similar markers — remove them
-8. Wrong package manager in README — this is a {language} project, fix any mismatched install commands
-9. Source files under 40 lines (too short to be real — expand them)
-10. Any mention of "generated", "auto-generated", "AI" in comments or docstrings
+CHECK FOR AND FIX ALL OF THE FOLLOWING (fix everything in one pass):
 
-Return ONLY this JSON:
+Code issues:
+1. Import referencing a path or name not in the file tree
+2. Function/class called in one file but defined with a different name in another
+3. Stub implementations: pass, raise NotImplementedError, empty body
+4. `assert True`, `assert x or True` — meaningless test assertions
+
+README issues:
+5. URLs containing "your-org" or "your-username" → replace with github.com/{GH_USER}/{repo_name}
+6. Wrong install command → should be: {install}
+7. Fake email addresses (alice@, bob@, maintainer@, anything@example.com) → remove entirely
+8. "Created by", "Maintained by", "Contact:" lines with fake names → remove entirely
+9. "*End of README*" or similar markers → remove
+10. Missing API Reference section → add it
+
+General:
+11. Any mention of "generated", "auto-generated", "AI" in comments or docstrings → remove
+12. Source files under 50 lines → flag but do not expand (leave for next run)
+
+Return ONLY this JSON — include a fix for EVERY issue found, empty list if none:
 {{
   "fixes": [
     {{
-      "path": "src/core/engine.py",
-      "issue": "one-line description of the actual problem",
-      "fixed_content": "complete corrected file — the whole thing, not a diff"
+      "path": "README.md",
+      "issue": "concise description of the specific problem",
+      "fixed_content": "the complete corrected file — not a diff, the entire content"
     }}
   ]
 }}"""
@@ -452,8 +503,8 @@ Return ONLY this JSON:
     try:
         raw = _call(
             [{"role": "system", "content": VALIDATE_SYSTEM}, {"role": "user", "content": prompt}],
-            max_tokens=4096,
-            temperature=0.2,
+            max_tokens=8000,   # raised significantly — validator needs space for full file rewrites
+            temperature=0.15,
         )
         result = _parse_json(raw)
         fixes = result.get("fixes", [])
@@ -488,19 +539,22 @@ def generate_project(analysis: dict) -> dict:
     profile = get_profile(analysis["category"])
     print(f"[generator] Category: {analysis['category']} — {profile['quality_bar'][:70]}...")
 
+    # Phase 0 — design (source context only used here, not in file generation)
     design = design_project(analysis)
     print(f"[generator] Design: '{design['project_name']}' — {design['tagline']}")
     print(f"[generator] Abstractions: {[a['name'] for a in design.get('core_abstractions', [])]}")
-    time.sleep(4)
+    time.sleep(6)
 
+    # Phase 1 — file tree
     print("[generator] Phase 1: Planning file tree...")
     plan = plan_project(analysis, design)
     file_tree = plan.get("file_tree", [])
     print(f"[generator] Planned {len(file_tree)} files:")
     for f in file_tree:
         print(f"  • {f['path']}")
-    time.sleep(4)
+    time.sleep(6)
 
+    # Phase 2 — write files
     print("\n[generator] Phase 2: Writing files...")
     files: dict[str, str] = {}
 
@@ -514,10 +568,11 @@ def generate_project(analysis: dict) -> dict:
         except Exception as e:
             print(f"  ⚠ Failed {path}: {e}")
             files[path] = f"# {path}\n# {purpose}\n"
-        time.sleep(8)
+        time.sleep(10)   # longer pause — we're optimising for quality not speed
 
     readme = files.pop("README.md", f"# {plan['repo_name']}\n\n{plan['description']}\n")
 
+    # Phase 3 — validation
     print("\n[generator] Phase 3: Validation pass...")
     files, readme = validate_and_fix(files, readme, plan, design, analysis)
 
