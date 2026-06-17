@@ -18,5 +18,15 @@
     "generated_url": "https://github.com/asmit25805/codepilot-cli",
     "concept": "A TypeScript\u2011based CLI and plugin framework that lets AI agents (Claude/OpenAI) orchestrate planning, execution, and verified completion on large codebases via Codex.",
     "inspiration_angle": "LazyCodex fuses the OmO \"quality\u2011obsessed\" agent harness with a Codex\u2011tailored bootstrap and marketplace system, delivering a zero\u2011install npx entry point and a strict patch\u2011translation layer. This creates a distinct product that focuses on Codex\u2011specific orchestration rather than being a generic OmO fork."
+  },
+  {
+    "date": "2026-06-17T08:55:57.156098",
+    "category": "automation",
+    "source_repo": "yb2460/harness-anything",
+    "source_stars": 833,
+    "generated_repo": "office-harness",
+    "generated_url": "https://github.com/asmit25805/office-harness",
+    "concept": "A Python\u2011based automation hub that drives WPS/Microsoft Office (Writer, Calc, Impress) via COM, using JSON\u2011driven templates and a CLI to expose 47 commands for document creation, styling, and export.",
+    "inspiration_angle": "Create a cross\u2011platform counterpart that targets LibreOffice/OpenOffice via the UNO API, preserving the JSON\u2011driven pipeline but adding a pluggable backend selector (COM vs. UNO). This would open the automation hub to Linux/macOS users and enable hybrid workflows where the same JSON templates drive both Windows Office and LibreOffice, differentiating the project while reusing the core design system."
   }
 ]
