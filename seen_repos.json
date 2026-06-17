@@ -1,6 +1,7 @@
 {
   "repos": [
-    "webc-site/math"
+    "webc-site/math",
+    "code-yeongyu/lazycodex"
   ],
-  "last_category_index": 2
+  "last_category_index": 3
 }

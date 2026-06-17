@@ -8,5 +8,15 @@
     "generated_url": "https://github.com/asmit25805/native-mathml-optimizer",
     "concept": "A compile\u2011time TeX\u2011to\u2011MathML converter that turns LaTeX formulas into native MathML markup for Markdown and web pages.",
     "inspiration_angle": "A dedicated TeX\u2011to\u2011MathML compiler that treats MathML as the final layout target rather than an intermediate format, positioning the library as a build\u2011time optimizer for native\u2011MathML browsers \u2013 a distinct approach from KaTeX/MathJax which remain runtime layout engines."
+  },
+  {
+    "date": "2026-06-17T06:31:46.995651",
+    "category": "cli",
+    "source_repo": "code-yeongyu/lazycodex",
+    "source_stars": 1136,
+    "generated_repo": "codepilot-cli",
+    "generated_url": "https://github.com/asmit25805/codepilot-cli",
+    "concept": "A TypeScript\u2011based CLI and plugin framework that lets AI agents (Claude/OpenAI) orchestrate planning, execution, and verified completion on large codebases via Codex.",
+    "inspiration_angle": "LazyCodex fuses the OmO \"quality\u2011obsessed\" agent harness with a Codex\u2011tailored bootstrap and marketplace system, delivering a zero\u2011install npx entry point and a strict patch\u2011translation layer. This creates a distinct product that focuses on Codex\u2011specific orchestration rather than being a generic OmO fork."
   }
 ]
