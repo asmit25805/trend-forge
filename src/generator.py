@@ -311,13 +311,15 @@ def generate_file(
     already_written: dict,
 ) -> str:
     profile = get_profile(analysis["category"])
-    source_block = _source_context_block(analysis)
+    # FIX: only send source context in Phase 0 (design), not in every file
+    # generation call — this was the main cause of daily token quota exhaustion
     gh_user = design.get("github_user") or os.environ.get("GH_USERNAME", "")
     repo_name = plan["repo_name"]
+    language = design.get("language", "")
 
     design_context = f"""TECHNICAL DESIGN:
 Project: {design['project_name']} — {design['tagline']}
-Language: {design['language']}
+Language: {language}
 Data flow: {design['data_flow']}
 Error strategy: {design['error_handling_strategy']}
 Core abstractions: {json.dumps(design.get('core_abstractions', []), indent=2)}
@@ -331,11 +333,19 @@ Key decisions: {chr(10).join('- ' + d for d in design.get('key_design_decisions'
             preview = content[:800].replace("\n", "\\n")
             written_context += f"\n// {p}\n{preview}...\n"
 
+    # FIX: detect package manager from language so install instructions are correct
+    if "typescript" in language.lower() or "javascript" in language.lower():
+        install_cmd = f"npm install {repo_name}"
+    elif "go" in language.lower():
+        install_cmd = f"go get github.com/{gh_user}/{repo_name}"
+    elif "rust" in language.lower():
+        install_cmd = f"cargo add {repo_name}"
+    else:
+        install_cmd = f"pip install {repo_name}"
+
     prompt = f"""Write this file for project '{repo_name}'.
 
 {design_context}
-
-{source_block}
 
 {written_context}
 
@@ -350,10 +360,12 @@ STRICT RULES — violating any of these makes the output unusable:
 
 1. README.md rules:
    - All URLs must use github.com/{gh_user}/{repo_name} — never "your-org" or "your-username"
-   - Install section: pip install {repo_name} (or npm/go equivalent)
+   - Install command: {install_cmd}
    - Quickstart must be copy-paste runnable with real output shown
    - At least 120 lines
    - No generic phrases like "easy to use", "lightweight", "powerful"
+   - Do NOT end the file with "*End of README*" or any similar marker
+   - Do NOT mix package managers — this is a {language} project, use the correct ecosystem only
 
 2. Test file rules:
    - Import from the ACTUAL module paths in THIS project (not generic examples)
@@ -363,8 +375,9 @@ STRICT RULES — violating any of these makes the output unusable:
    - Test functions must have descriptive names: test_pipeline_retries_on_timeout not test_basic
 
 3. CI yaml rules:
-   - Use real action versions (actions/checkout@v4, actions/setup-python@v5)
-   - Install deps, lint with ruff/flake8, run pytest — all three steps
+   - Use real action versions (actions/checkout@v4, actions/setup-python@v5 or actions/setup-node@v4)
+   - Install deps, lint, run tests — all three steps
+   - Match the CI toolchain to the language ({language})
 
 4. Source code rules:
    - Implement the FULL logic from the design doc — no pass, no NotImplementedError, no stubs
@@ -393,8 +406,10 @@ def validate_and_fix(
 ) -> tuple[dict, str]:
     gh_user = design.get("github_user") or os.environ.get("GH_USERNAME", "")
     repo_name = plan["repo_name"]
+    language = design.get("language", "")
 
     design_summary = f"""Spec:
+- Language: {language}
 - Abstractions: {[a['name'] for a in design.get('core_abstractions', [])]}
 - Models: {[m['name'] for m in design.get('data_models', [])]}
 - Modules: {[m['file'] + ' exports ' + str(m['exports']) for m in design.get('module_interfaces', [])]}
@@ -418,8 +433,10 @@ Find and fix ALL of the following:
 4. Test comments like "# Import the package under test", "# placeholder", "# TODO"
 5. Test assertions that always pass (assert True, assert x or True, etc.)
 6. README URLs containing "your-org", "your-username" — replace with github.com/{gh_user}/{repo_name}
-7. Source files under 40 lines (too short to be real — expand them)
-8. Any mention of "generated", "auto-generated", "AI" in comments or docstrings
+7. README ending with "*End of README*" or similar markers — remove them
+8. Wrong package manager in README — this is a {language} project, fix any mismatched install commands
+9. Source files under 40 lines (too short to be real — expand them)
+10. Any mention of "generated", "auto-generated", "AI" in comments or docstrings
 
 Return ONLY this JSON:
 {{
