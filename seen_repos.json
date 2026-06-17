@@ -1,7 +1,5 @@
 {
   "repos": [
-    "omnigent-ai/omnigent",
-    "DietrichGebert/ponytail",
     "webc-site/math"
   ],
   "last_category_index": 2
