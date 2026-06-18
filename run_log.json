@@ -38,5 +38,15 @@
     "generated_url": "https://github.com/asmit25805/deptrim",
     "concept": "A portable skill/plugin that injects a lazy\u2011senior\u2011developer rule set into LLM coding agents, automatically steering them toward minimal, dependency\u2011free code.",
     "inspiration_angle": "Instead of a static prompt library, Ponytail treats the lazy\u2011senior\u2011dev principle as a first\u2011class, toggleable skill layer that can be injected into any LLM agent at runtime, providing a universal, cross\u2011agent governance mechanism for code quality and cost efficiency."
+  },
+  {
+    "date": "2026-06-18T08:32:19.737815",
+    "category": "agent",
+    "source_repo": "vercel/eve",
+    "source_stars": 977,
+    "generated_repo": "flowforge",
+    "generated_url": "https://github.com/asmit25805/flowforge",
+    "concept": "A filesystem\u2011first TypeScript framework that lets developers author durable AI agents by placing model config, prompts, tools, skills, channels, and schedules in conventional directory structures.",
+    "inspiration_angle": "Unlike generic LLM wrappers, eve positions the file system itself as the authoring language, turning prompts, tools, and schedules into tangible source files. This concrete, inspectable layout combined with Vercel\u2011aware tooling (sandbox pre\u2011warm warnings, clickable dev URLs) creates a unique developer experience that bridges local development, CI/CD, and production\u2011grade agent deployment."
   }
 ]
