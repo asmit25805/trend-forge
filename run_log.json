@@ -48,5 +48,15 @@
     "generated_url": "https://github.com/asmit25805/flowforge",
     "concept": "A filesystem\u2011first TypeScript framework that lets developers author durable AI agents by placing model config, prompts, tools, skills, channels, and schedules in conventional directory structures.",
     "inspiration_angle": "Unlike generic LLM wrappers, eve positions the file system itself as the authoring language, turning prompts, tools, and schedules into tangible source files. This concrete, inspectable layout combined with Vercel\u2011aware tooling (sandbox pre\u2011warm warnings, clickable dev URLs) creates a unique developer experience that bridges local development, CI/CD, and production\u2011grade agent deployment."
+  },
+  {
+    "date": "2026-06-19T09:00:04.716914",
+    "category": "ai",
+    "source_repo": "XiaomiMiMo/MiMo-Code",
+    "source_stars": 9847,
+    "generated_repo": "testpilot",
+    "generated_url": "https://github.com/asmit25805/testpilot",
+    "concept": "MiMo Code is a terminal\u2011native AI coding assistant that orchestrates multiple LLM agents, persists project memory, and renders a plugin\u2011driven TUI using SolidJS.",
+    "inspiration_angle": "A terminal\u2011first AI pair\u2011programmer that focuses exclusively on test\u2011driven development: it would extend the same agent\u2011plugin pattern to automatically generate, run, and refactor unit tests, integrating a lightweight test runner and a \"test\u2011generation\" skill, thereby differentiating itself from MiMo Code while leveraging its core architecture."
   }
 ]
