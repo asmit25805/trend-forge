@@ -1,25 +1,15 @@
 """
 Creates a new GitHub repo and pushes all generated files.
-Spreads commits across logical groups (setup / core / support / tests / docs)
-so the resulting history reads as a normal incremental build rather than a
-single dump commit.
+Spreads commits across logical groups to look like real development history.
 
 Uses the Git Tree API to push each batch as a single atomic commit, which
 avoids the race condition where the Contents API 404s on nested paths
 (e.g. .github/workflows/) because the branch isn't indexed yet.
-
-Usage:
-    export PAT_TOKEN=ghp_xxx
-    export GH_USERNAME=your-username
-    python push_to_github.py ./my_generated_project my-repo-name \
-        --description "Short description" --topics ai cli automation
 """
 
 import os
-import sys
 import time
 import base64
-import argparse
 import requests
 from datetime import datetime
 
@@ -32,73 +22,160 @@ HEADERS = {
     "X-GitHub-Api-Version": "2022-11-28",
 }
 
+_MIT_TEMPLATE = """MIT License
+
+Copyright (c) {year} {username}
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+"""
+
+_CONTRIBUTING_TEMPLATE = """# Contributing to {repo_name}
+
+Thank you for taking the time to contribute!
+
+## How to Report Bugs
+
+- Check the [existing issues]({repo_url}/issues) before opening a new one.
+- Clearly describe the problem and include steps to reproduce it.
+- Include your OS, runtime version, and any relevant logs.
+
+## Making Pull Requests
+
+1. Fork the repository and create your branch from `main`.
+2. Install dependencies and verify the test suite passes locally.
+3. Write tests for any new behaviour you introduce.
+4. Ensure your code follows the existing style (see linting config).
+5. Write clear, descriptive commit messages.
+6. Open a pull request targeting `main` and describe your changes.
+
+## Good First Issues
+
+Issues labelled [`good first issue`]({repo_url}/issues?q=label%3A%22good+first+issue%22) are a great place to start.
+They are self-contained and well-scoped for new contributors.
+
+## Development Setup
+
+```bash
+git clone {repo_url}.git
+cd {repo_name}
+```
+
+Install dependencies per the README, then run the test suite to confirm everything works before making changes.
+"""
+
+_BUG_REPORT_TEMPLATE = """---
+name: Bug report
+about: Report a reproducible bug
+title: '[Bug] '
+labels: bug
+assignees: ''
+---
+
+## Describe the bug
+A clear and concise description of what the bug is.
+
+## Steps to reproduce
+1. ...
+2. ...
+3. ...
+
+## Expected behaviour
+What you expected to happen.
+
+## Actual behaviour
+What actually happened.
+
+## Environment
+- OS:
+- Runtime version:
+- Package version:
+
+## Additional context
+Any other context, logs, or screenshots.
+"""
+
+_FEATURE_REQUEST_TEMPLATE = """---
+name: Feature request
+about: Suggest a new feature or improvement
+title: '[Feature] '
+labels: enhancement
+assignees: ''
+---
+
+## Problem
+Describe the problem or limitation this feature would solve.
+
+## Proposed solution
+Describe what you would like to happen.
+
+## Alternatives considered
+Any alternative approaches you have thought about.
+
+## Additional context
+Any other context, mockups, or examples.
+"""
+
+
+def _mit_license() -> str:
+    return _MIT_TEMPLATE.format(
+        year=datetime.utcnow().year,
+        username=GITHUB_USERNAME,
+    )
+
+
+def _contributing(repo_name: str) -> str:
+    repo_url = f"https://github.com/{GITHUB_USERNAME}/{repo_name}"
+    return _CONTRIBUTING_TEMPLATE.format(repo_name=repo_name, repo_url=repo_url)
+
 
 # ── Identity check ─────────────────────────────────────────────────────────
 
 def _verify_authenticated_user():
-    """
-    Confirm the PAT actually belongs to GH_USERNAME before creating or
-    touching any repo. Prevents pushing to the wrong account on a stale
-    or misconfigured token.
-    """
     r = requests.get("https://api.github.com/user", headers=HEADERS)
     r.raise_for_status()
     actual = r.json()["login"]
     if actual.lower() != GITHUB_USERNAME.lower():
         raise RuntimeError(
             f"[pusher] PAT_TOKEN belongs to '{actual}', not GH_USERNAME="
-            f"'{GITHUB_USERNAME}'. Refusing to push to avoid hitting the "
-            "wrong account."
+            f"'{GITHUB_USERNAME}'. Refusing to push to avoid hitting the wrong account."
         )
 
 
 def _check_workflow_scope(files: dict):
-    """
-    GitHub's Git Data API requires the PAT to have the separate `workflow`
-    scope (classic) or "Workflows: write" permission (fine-grained) to
-    create/update anything under .github/workflows/. Without it, the
-    create-tree call fails with an inconsistent, misleading status (404,
-    422, or 500 have all been observed for this exact cause) instead of a
-    clear permission error. Check it up front so a missing scope fails
-    loudly with an actionable message instead of burning a debugging
-    session on a cryptic 404 deep in tree creation.
-    """
     if not any(p.startswith(".github/workflows/") for p in files):
         return
-
     r = requests.get("https://api.github.com/user", headers=HEADERS)
     r.raise_for_status()
     scopes_header = r.headers.get("X-OAuth-Scopes")
-
     if scopes_header is None:
-        # Fine-grained PATs don't return this header — there's no reliable
-        # way to pre-check, so just proceed and let the real push surface
-        # any permission error.
         return
-
     scopes = {s.strip() for s in scopes_header.split(",") if s.strip()}
     if "workflow" not in scopes:
         raise RuntimeError(
-            "[pusher] This push includes files under .github/workflows/, but "
-            "PAT_TOKEN doesn't have the 'workflow' scope (current scopes: "
-            f"{scopes_header or '(none)'}). GitHub will reject the tree "
-            "creation for that path with a misleading 404/422 instead of a "
-            "clear permission error. Fix: GitHub → Settings → Developer "
-            "settings → Personal access tokens → edit this token → check "
-            "'workflow' → regenerate → update the PAT_TOKEN secret."
+            "[pusher] PAT_TOKEN doesn't have the 'workflow' scope. "
+            f"Current scopes: {scopes_header or '(none)'}. "
+            "Fix: GitHub → Settings → Developer settings → Personal access tokens "
+            "→ edit token → check 'workflow' → regenerate → update PAT_TOKEN secret."
         )
 
 
 def preflight_check():
-    """
-    Call this at the very top of main.py's run(), before fetching trending
-    repos or making any Cerebras calls. Confirms token identity and the
-    'workflow' scope up front so a misconfigured PAT fails in under a
-    second instead of after a full (rate-limited, multi-minute) generation
-    pass. TrendForge always writes a .github/workflows/ci.yml into every
-    generated project, so the workflow scope is always required — no need
-    to wait until we know the actual file list for this run.
-    """
     _verify_authenticated_user()
     _check_workflow_scope({".github/workflows/ci.yml": ""})
 
@@ -106,11 +183,6 @@ def preflight_check():
 # ── Repo creation ─────────────────────────────────────────────────────────────
 
 def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, str]:
-    """
-    Creates a repo with auto_init=True (provisions git DB immediately),
-    waits for the initial commit to be readable, and returns
-    (full_name, init_commit_sha) to use as parent for the first batch.
-    """
     url = "https://api.github.com/user/repos"
     payload = {
         "name": name,
@@ -132,14 +204,11 @@ def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, st
     if topics:
         _set_topics(full_name, topics)
 
-    # Poll until the auto-init commit is readable — this is the only reliable
-    # way to know the git DB is fully provisioned and safe to write to.
     init_sha = _wait_for_init_commit(full_name)
     return full_name, init_sha
 
 
 def _wait_for_init_commit(full_name: str) -> str:
-    """Poll refs/heads/main until the auto-init commit SHA is available."""
     for attempt in range(12):
         r = requests.get(
             f"https://api.github.com/repos/{full_name}/git/refs/heads/main",
@@ -152,7 +221,6 @@ def _wait_for_init_commit(full_name: str) -> str:
         wait = 3 * (attempt + 1)
         print(f"[pusher] waiting for git store... {wait}s (attempt {attempt + 1}/12)")
         time.sleep(wait)
-
     raise RuntimeError(f"[pusher] git store never became ready for {full_name}")
 
 
@@ -165,7 +233,6 @@ def _set_topics(full_name: str, topics: list[str]):
 # ── Git Tree API helpers ──────────────────────────────────────────────────────
 
 def _create_blob(full_name: str, content: str) -> str:
-    """Upload file content as a blob and return its SHA."""
     url = f"https://api.github.com/repos/{full_name}/git/blobs"
     payload = {
         "content": base64.b64encode(content.encode("utf-8")).decode("utf-8"),
@@ -177,19 +244,20 @@ def _create_blob(full_name: str, content: str) -> str:
 
 
 def _create_tree(full_name: str, base_tree_sha: str, blobs: list[dict]) -> str:
-    """Create a git tree built on top of base_tree_sha."""
     url = f"https://api.github.com/repos/{full_name}/git/trees"
     tree = [
         {"path": b["path"], "mode": "100644", "type": "blob", "sha": b["blob_sha"]}
         for b in blobs
     ]
-    resp = requests.post(url, headers=HEADERS, json={"tree": tree, "base_tree": base_tree_sha})
+    resp = requests.post(url, headers=HEADERS, json={
+        "tree": tree,
+        "base_tree": base_tree_sha,
+    })
     resp.raise_for_status()
     return resp.json()["sha"]
 
 
 def _create_commit(full_name: str, message: str, tree_sha: str, parent_sha: str) -> str:
-    """Create a commit object and return its SHA."""
     url = f"https://api.github.com/repos/{full_name}/git/commits"
     resp = requests.post(url, headers=HEADERS, json={
         "message": message,
@@ -201,14 +269,12 @@ def _create_commit(full_name: str, message: str, tree_sha: str, parent_sha: str)
 
 
 def _update_ref(full_name: str, commit_sha: str):
-    """Force-advance refs/heads/main to commit_sha."""
     url = f"https://api.github.com/repos/{full_name}/git/refs/heads/main"
     resp = requests.patch(url, headers=HEADERS, json={"sha": commit_sha, "force": True})
     resp.raise_for_status()
 
 
 def _get_commit_tree(full_name: str, commit_sha: str) -> str:
-    """Return the tree SHA of a given commit, with retry for propagation lag."""
     for attempt in range(6):
         r = requests.get(
             f"https://api.github.com/repos/{full_name}/git/commits/{commit_sha}",
@@ -221,12 +287,6 @@ def _get_commit_tree(full_name: str, commit_sha: str) -> str:
 
 
 def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha: str) -> str:
-    """
-    Push a batch of files as a single atomic commit using the Git Tree API.
-    Returns the new commit SHA to use as parent for the next batch.
-    parent_sha is always a valid SHA — seeded from the auto-init commit.
-    """
-    # 1. Upload blobs
     blobs = []
     for path, content in batch.items():
         if not isinstance(content, str):
@@ -235,50 +295,11 @@ def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha:
         blobs.append({"path": path, "blob_sha": blob_sha})
         print(f"  ✓ {path}")
 
-    # 2. Fetch parent commit's tree SHA to use as base
     base_tree_sha = _get_commit_tree(full_name, parent_sha)
-
-    # 3. Build tree, commit, advance ref
     tree_sha = _create_tree(full_name, base_tree_sha, blobs)
     commit_sha = _create_commit(full_name, message, tree_sha, parent_sha)
     _update_ref(full_name, commit_sha)
-
     return commit_sha
-
-
-# ── Local file loading ─────────────────────────────────────────────────────
-
-DEFAULT_EXCLUDE_DIRS = {
-    ".git", "__pycache__", "node_modules", "venv", ".venv",
-    ".idea", ".vscode", "dist", "build", ".pytest_cache", ".mypy_cache",
-}
-
-
-def _load_files_from_dir(root_dir: str, exclude_dirs: set[str] | None = None) -> dict[str, str]:
-    """
-    Walk root_dir and return {relative_path: content} for every text file.
-    Skips VCS/dependency/cache directories and any unreadable binary files
-    (printing a notice rather than failing the whole run).
-    """
-    exclude_dirs = exclude_dirs or DEFAULT_EXCLUDE_DIRS
-    files: dict[str, str] = {}
-
-    for dirpath, dirnames, filenames in os.walk(root_dir):
-        dirnames[:] = [
-            d for d in dirnames
-            if d not in exclude_dirs and not d.startswith(".")
-        ]
-        for filename in filenames:
-            abs_path = os.path.join(dirpath, filename)
-            rel_path = os.path.relpath(abs_path, root_dir).replace(os.sep, "/")
-            try:
-                with open(abs_path, "r", encoding="utf-8") as f:
-                    files[rel_path] = f.read()
-            except (UnicodeDecodeError, PermissionError) as e:
-                print(f"[pusher] skipping unreadable file {rel_path}: {e}")
-                continue
-
-    return files
 
 
 # ── Main push entry point ─────────────────────────────────────────────────────
@@ -293,9 +314,8 @@ def push_project(project: dict) -> str:
         project.get("topics", []),
     )
 
-    # .get("readme") (no default arg) so an explicit None falls through to
-    # the f-string default instead of writing the literal string "None".
-    readme = project.get("readme") or f"# {project['repo_name']}\n"
+    repo_name = project["repo_name"]
+    readme = project.get("readme") or f"# {repo_name}\n"
     files: dict = project.get("files", {})
 
     github_files  = {p: c for p, c in files.items() if p.startswith(".github/")}
@@ -310,7 +330,16 @@ def push_project(project: dict) -> str:
     )
     other_files = {p: c for p, c in files.items() if p not in assigned}
 
-    initial_batch = {"README.md": readme, **github_files}
+    # Initial commit: README + LICENSE + CONTRIBUTING.md + issue templates + CI
+    # All of these go in the first commit so the repo looks complete from day one
+    initial_batch = {
+        "README.md": readme,
+        "LICENSE": _mit_license(),
+        "CONTRIBUTING.md": _contributing(repo_name),
+        ".github/ISSUE_TEMPLATE/bug_report.md": _BUG_REPORT_TEMPLATE,
+        ".github/ISSUE_TEMPLATE/feature_request.md": _FEATURE_REQUEST_TEMPLATE,
+        **github_files,
+    }
 
     batches = [
         ("Initial commit",                        initial_batch),
@@ -361,7 +390,8 @@ def _is_support(path: str) -> bool:
         "plugin", "plugins", "agent", "agents", "cli", "cmd", "bin",
         "api", "route", "routes", "server", "handler", "handlers",
         "model", "models", "schema", "schemas", "config", "logger",
-        "state", "store", "service", "services",
+        "state", "store", "service", "services", "skill", "skills",
+        "runner", "runners", "step", "steps", "tool", "tools", "lib",
     }
     return any(p in keywords for p in parts) and not _is_test(path) and not _is_core(path)
 
@@ -377,50 +407,3 @@ def _is_test(path: str) -> bool:
 def _is_doc(path: str) -> bool:
     parts = path.lower().split("/")
     return any(p in {"doc", "docs", "example", "examples", "demo", "notebook"} for p in parts)
-
-
-# ── CLI entry point ───────────────────────────────────────────────────────
-
-def main():
-    parser = argparse.ArgumentParser(
-        description="Create a GitHub repo and push a local project directory "
-                     "as a series of logically-grouped commits."
-    )
-    parser.add_argument("directory", help="Local path containing the project files to push")
-    parser.add_argument("repo_name", help="Name for the new GitHub repository")
-    parser.add_argument("--description", default="", help="Repo description")
-    parser.add_argument("--topics", nargs="*", default=[], help="Repo topics/tags")
-    parser.add_argument(
-        "--readme",
-        default=None,
-        help="Path to a README file to use instead of any README.md found in `directory`",
-    )
-    args = parser.parse_args()
-
-    if not os.path.isdir(args.directory):
-        sys.exit(f"[pusher] directory not found: {args.directory}")
-
-    files = _load_files_from_dir(args.directory)
-    if not files:
-        sys.exit(f"[pusher] no readable files found under {args.directory}")
-
-    readme_content = None
-    if args.readme:
-        with open(args.readme, "r", encoding="utf-8") as f:
-            readme_content = f.read()
-    elif "README.md" in files:
-        readme_content = files.pop("README.md")
-
-    project = {
-        "repo_name": args.repo_name,
-        "description": args.description,
-        "topics": args.topics,
-        "readme": readme_content,
-        "files": files,
-    }
-
-    push_project(project)
-
-
-if __name__ == "__main__":
-    main()
