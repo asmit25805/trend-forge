@@ -1,11 +1,12 @@
 {
   "repos": [
-    "code-yeongyu/lazycodex",
-    "webc-site/math",
     "DietrichGebert/ponytail",
-    "XiaomiMiMo/MiMo-Code",
+    "code-yeongyu/lazycodex",
     "yb2460/harness-anything",
-    "vercel/eve"
+    "vercel/eve",
+    "webc-site/math",
+    "omnigent-ai/omnigent",
+    "XiaomiMiMo/MiMo-Code"
   ],
-  "last_category_index": 0
+  "last_category_index": 1
 }

@@ -58,5 +58,15 @@
     "generated_url": "https://github.com/asmit25805/testpilot",
     "concept": "MiMo Code is a terminal\u2011native AI coding assistant that orchestrates multiple LLM agents, persists project memory, and renders a plugin\u2011driven TUI using SolidJS.",
     "inspiration_angle": "A terminal\u2011first AI pair\u2011programmer that focuses exclusively on test\u2011driven development: it would extend the same agent\u2011plugin pattern to automatically generate, run, and refactor unit tests, integrating a lightweight test runner and a \"test\u2011generation\" skill, thereby differentiating itself from MiMo Code while leveraging its core architecture."
+  },
+  {
+    "date": "2026-06-20T07:43:56.231669",
+    "category": "developer-tools",
+    "source_repo": "omnigent-ai/omnigent",
+    "source_stars": 4085,
+    "generated_repo": "polycode-hub",
+    "generated_url": "https://github.com/asmit25805/polycode-hub",
+    "concept": "Omnigent is an open\u2011source framework that provides a unified orchestration layer (meta\u2011harness) for multiple AI coding agents (Claude Code, Codex, Cursor, Pi, and custom agents) with real\u2011time session syncing and policy sandboxing.",
+    "inspiration_angle": "While many projects wrap a single LLM SDK, Omnigent\u2019s original twist is the meta\u2011harness that lets you swap or combine heterogeneous agents (Claude, Codex, Pi, custom YAML\u2011defined agents) without changing application code, coupled with a cross\u2011device session model and native desktop integration\u2014creating a truly provider\u2011agnostic multi\u2011agent orchestration platform."
   }
 ]
