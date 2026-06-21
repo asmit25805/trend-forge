@@ -68,5 +68,15 @@
     "generated_url": "https://github.com/asmit25805/polycode-hub",
     "concept": "Omnigent is an open\u2011source framework that provides a unified orchestration layer (meta\u2011harness) for multiple AI coding agents (Claude Code, Codex, Cursor, Pi, and custom agents) with real\u2011time session syncing and policy sandboxing.",
     "inspiration_angle": "While many projects wrap a single LLM SDK, Omnigent\u2019s original twist is the meta\u2011harness that lets you swap or combine heterogeneous agents (Claude, Codex, Pi, custom YAML\u2011defined agents) without changing application code, coupled with a cross\u2011device session model and native desktop integration\u2014creating a truly provider\u2011agnostic multi\u2011agent orchestration platform."
+  },
+  {
+    "date": "2026-06-21T14:05:33.079766",
+    "category": "cli",
+    "source_repo": "2aronS/Duel-Agents",
+    "source_stars": 1002,
+    "generated_repo": "llm-router",
+    "generated_url": "https://github.com/asmit25805/llm-router",
+    "concept": "A TypeScript monorepo that provides a CLI, SDK, and IDE integration plugins to route LLM requests through the Duel Agents proxy, automatically configuring environment files for multiple AI tools.",
+    "inspiration_angle": "A unified, language\u2011agnostic routing layer that abstracts multiple LLM providers behind a single proxy, automatically selects the cheapest passing response, and exposes the configuration through environment files\u2014extensible to any future LLM provider or custom routing policy beyond the current OpenAI/Anthropic focus."
   }
 ]

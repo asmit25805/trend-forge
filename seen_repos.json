@@ -1,12 +1,13 @@
 {
   "repos": [
-    "DietrichGebert/ponytail",
-    "code-yeongyu/lazycodex",
-    "yb2460/harness-anything",
+    "2aronS/Duel-Agents",
     "vercel/eve",
     "webc-site/math",
+    "yb2460/harness-anything",
+    "XiaomiMiMo/MiMo-Code",
+    "code-yeongyu/lazycodex",
     "omnigent-ai/omnigent",
-    "XiaomiMiMo/MiMo-Code"
+    "DietrichGebert/ponytail"
   ],
-  "last_category_index": 1
+  "last_category_index": 3
 }
