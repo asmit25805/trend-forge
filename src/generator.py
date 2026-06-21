@@ -23,7 +23,6 @@ client = Cerebras(
 
 GH_USER = os.environ.get("GH_USERNAME", "")
 
-# Phrases that indicate a file is a stub and needs regeneration
 STUB_MARKERS = [
     "will be added in a later",
     "will be implemented in a later",
@@ -40,6 +39,14 @@ STUB_MARKERS = [
     "pass\n",
     "# TODO",
 ]
+
+# Shared type files that must always exist — the model frequently imports from
+# these without planning them, causing CI failures.
+REQUIRED_TYPE_FILES = {
+    "python": "src/core/models.py",
+    "typescript": "src/types.ts",
+    "go": "internal/types.go",
+}
 
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
@@ -95,7 +102,6 @@ def _parse_json(raw: str) -> dict | list:
 
 
 def _is_stub(content: str) -> bool:
-    """Return True if the file content looks like a stub or placeholder."""
     lower = content.lower()
     return any(marker.lower() in lower for marker in STUB_MARKERS)
 
@@ -131,6 +137,41 @@ def _ci_setup(language: str) -> str:
     if "rust" in lang:
         return "actions-rs/toolchain, cargo clippy, cargo test"
     return "actions/setup-python@v5, pip install -e .[dev], ruff check ., pytest -q"
+
+
+def _required_types_file(language: str) -> str | None:
+    lang = language.lower()
+    for key, path in REQUIRED_TYPE_FILES.items():
+        if key in lang:
+            return path
+    return None
+
+
+def _ascii_architecture(design: dict) -> str:
+    """Build a simple ASCII box diagram from the design's core abstractions."""
+    abstractions = design.get("core_abstractions", [])
+    if not abstractions:
+        return ""
+
+    boxes = [a["name"] for a in abstractions]
+    width = max(len(b) for b in boxes) + 4
+
+    lines = ["```"]
+    for i, name in enumerate(boxes):
+        padding = width - len(name) - 2
+        left = padding // 2
+        right = padding - left
+        box = f"┌{'─' * (width - 2)}┐"
+        mid = f"│ {' ' * left}{name}{' ' * right} │"
+        bot = f"└{'─' * (width - 2)}┘"
+        lines.append(box)
+        lines.append(mid)
+        lines.append(bot)
+        if i < len(boxes) - 1:
+            lines.append(f"{'│':^{width}}")
+            lines.append(f"{'▼':^{width}}")
+    lines.append("```")
+    return "\n".join(lines)
 
 
 # ── Category style profiles ───────────────────────────────────────────────────
@@ -292,6 +333,7 @@ Respond ONLY with valid JSON. Never truncate."""
 def plan_project(analysis: dict, design: dict) -> dict:
     profile = get_profile(analysis["category"])
     language = design.get("language", "")
+    types_file = _required_types_file(language)
 
     abstractions = "\n".join(
         f"  - {a['name']}: {a['role']}" for a in design.get("core_abstractions", [])
@@ -300,6 +342,14 @@ def plan_project(analysis: dict, design: dict) -> dict:
         f"  - {m['file']}: exports {m['exports']}" for m in design.get("module_interfaces", [])
     )
 
+    # FIX 1: Tell the model exactly which shared types file must exist
+    types_requirement = ""
+    if types_file:
+        types_requirement = f"""- REQUIRED: include '{types_file}' — this is the shared types/models file.
+  ALL other modules must import their data models from this single file.
+  This prevents import errors where modules reference types that don't exist."""
+
+    # FIX 4: Tighten topics requirement
     prompt = f"""Turn this design document into a concrete file tree.
 
 PROJECT: {design['project_name']}
@@ -320,16 +370,22 @@ Structure convention: {profile['structure_hint']}
 RULES:
 - Every file listed in module_interfaces above must be in the file tree
 - Also include: README.md, .github/workflows/ci.yml, dependency file, 2 test files, 1 example
+{types_requirement}
 - 10-14 files total — quality over quantity
 - "purpose" must reference specific class or function names from the design doc above
 - Do NOT include a LICENSE file
+
+TOPICS RULE — topics must be specific, not generic:
+- Include at least 2 technology-specific tags (e.g. "fastapi", "sqlite", "pydantic", "click", "jest")
+- Include at least 2 problem-specific tags (e.g. "llm-routing", "dependency-analysis", "test-generation")
+- Avoid generic tags like "python", "typescript", "tool", "library", "cli" alone
 
 Return ONLY this JSON (no extra text, no truncation):
 {{
   "repo_name": "{design['project_name']}",
   "description": "{design['tagline']}",
   "language": "{language}",
-  "topics": ["specific-tag", "specific-tag", "specific-tag", "specific-tag", "specific-tag"],
+  "topics": ["tech-specific-1", "tech-specific-2", "problem-specific-1", "problem-specific-2", "category-tag"],
   "file_tree": [
     {{"path": "README.md", "purpose": "project overview, install, quickstart, full API reference"}},
     {{"path": "src/core/engine.py", "purpose": "implements Engine — orchestrates X and Y"}}
@@ -341,7 +397,19 @@ Return ONLY this JSON (no extra text, no truncation):
         max_tokens=2500,
         temperature=0.4,
     )
-    return _parse_json(raw)
+    result = _parse_json(raw)
+
+    # FIX 1: Enforce the types file exists in the tree regardless of what the model planned
+    if types_file:
+        existing_paths = {f["path"] for f in result.get("file_tree", [])}
+        if types_file not in existing_paths:
+            result["file_tree"].insert(1, {
+                "path": types_file,
+                "purpose": f"shared data models and type definitions — all other modules import from here",
+            })
+            print(f"[generator] Auto-added required types file: {types_file}")
+
+    return result
 
 
 # ── Phase 2: File generation ──────────────────────────────────────────────────
@@ -360,10 +428,12 @@ def generate_file(
     analysis: dict,
     design: dict,
     already_written: dict,
+    all_file_paths: list[str],
 ) -> str:
     profile = get_profile(analysis["category"])
     language = design.get("language", "")
     repo_name = plan["repo_name"]
+    types_file = _required_types_file(language)
 
     design_context = f"""TECHNICAL DESIGN:
 Project: {design['project_name']} — {design['tagline']}
@@ -380,22 +450,43 @@ Data models:
 Key design decisions:
 {chr(10).join('- ' + d for d in design.get('key_design_decisions', []))}"""
 
+    # FIX 1: Pass the FULL list of planned files so the model knows exactly what exists
+    files_list = "\n".join(f"  - {p}" for p in all_file_paths)
+    files_context = f"""
+ALL FILES IN THIS PROJECT (only import from paths listed here):
+{files_list}
+
+{"IMPORTANT: All shared data models and types must be imported from: " + types_file if types_file else ""}
+"""
+
     written_context = ""
     if already_written:
         written_context = "\nALREADY WRITTEN FILES (match naming, imports, and style exactly):\n"
         for p, content in list(already_written.items())[-4:]:
-            # Show more of each file so imports and class signatures are visible
-            preview = content[:1500].replace("\n", "\\n")
+            # FIX 2: Increased from 1500 to 3000 chars so full class signatures are visible
+            preview = content[:3000].replace("\n", "\\n")
             written_context += f"\n// {p}\n{preview}...\n"
 
     install = _install_cmd(language, repo_name)
     ci_setup = _ci_setup(language)
 
+    # FIX 3: Build ASCII architecture diagram to inject into README
+    arch_diagram = ""
+    if path == "README.md":
+        arch_diagram = f"""
+ARCHITECTURE DIAGRAM TO INCLUDE (put this in the Architecture section):
+{_ascii_architecture(design)}
+"""
+
     prompt = f"""Write this file for the project '{repo_name}' (github.com/{GH_USER}/{repo_name}).
 
 {design_context}
 
+{files_context}
+
 {written_context}
+
+{arch_diagram}
 
 FILE TO WRITE: {path}
 Purpose: {purpose}
@@ -416,22 +507,22 @@ FORBIDDEN in ALL files:
   ✗ Do NOT generate a LICENSE file or LICENSE section in README
   ✗ NEVER write stub code — no "pass", no "raise NotImplementedError", no empty bodies
   ✗ NEVER write comments like "full implementation will be added later", "placeholder", "TODO"
-  ✗ NEVER write "# This file currently contains only minimal scaffolding"
+  ✗ NEVER import from a path that is NOT in the "ALL FILES IN THIS PROJECT" list above
 
 README.md rules (only when writing README.md):
   ✓ All GitHub URLs: github.com/{GH_USER}/{repo_name} — no exceptions
   ✓ Install: {install}
   ✓ Quickstart: copy-paste runnable, shows real expected output
-  ✓ Sections: Overview, Features, Installation, Quickstart, API Reference, Contributing
+  ✓ Sections: Overview, Features, Installation, Quickstart, Architecture, API Reference, Contributing
+  ✓ Architecture section: include the ASCII diagram provided above
   ✓ API Reference documents every public class and function with signature and description
   ✓ Contributing: fork → branch → test → PR only — no fake maintainer contact
   ✓ At least 150 lines
   ✗ No "License" section — do not mention MIT, Apache, or any license
   ✗ No fake "Created by" or "Maintained by" or "Contact:" lines
-  ✗ No placeholder email addresses
 
 Test file rules (only when writing test files):
-  ✓ Import from actual module paths in THIS project
+  ✓ Import from actual module paths in THIS project (check the file list above)
   ✓ At least 6 test functions per file, each testing real behaviour
   ✓ Descriptive names: test_engine_retries_on_transient_error not test_basic
   ✓ Real assertions on real return values
@@ -442,7 +533,6 @@ CI yaml rules (only when writing .github/workflows/ci.yml):
   ✓ Trigger on push and pull_request to main
   ✓ Steps: checkout → {ci_setup}
   ✓ Pin all action versions (checkout@v4, setup-python@v5 or setup-node@v4)
-  ✗ No fake secrets or placeholder env vars
 
 Source code rules (all .py / .ts / .go / .rs files):
   ✓ Implement the FULL logic from the design doc — every method must have a real body
@@ -450,7 +540,7 @@ Source code rules (all .py / .ts / .go / .rs files):
   ✓ Type annotations on every function signature
   ✓ Docstrings on public API only — one line, describes behaviour
   ✗ No pass, no raise NotImplementedError, no empty function bodies
-  ✗ No comments that just describe what the next line does
+  ✗ Only import from files that exist in the project file list above
 
 Write the complete file now. Do not add any preamble or explanation:"""
 
@@ -469,12 +559,8 @@ def _check_and_regenerate_stubs(
     plan: dict,
     analysis: dict,
     design: dict,
+    all_file_paths: list[str],
 ) -> dict:
-    """
-    Scan every generated file for stub markers. If found, regenerate the file
-    immediately. This catches cases where Cerebras returned a placeholder instead
-    of a real implementation before the validator even runs.
-    """
     purpose_map = {spec["path"]: spec["purpose"] for spec in file_tree}
 
     for path in list(files.keys()):
@@ -484,7 +570,9 @@ def _check_and_regenerate_stubs(
             print(f"  ⚠ Stub detected in {path} — regenerating...")
             time.sleep(5)
             try:
-                new_content = generate_file(path, purpose, plan, analysis, design, files)
+                new_content = generate_file(
+                    path, purpose, plan, analysis, design, files, all_file_paths
+                )
                 if _is_stub(new_content):
                     print(f"  ⚠ Still a stub after regeneration: {path} — keeping original")
                 else:
@@ -517,7 +605,8 @@ def validate_and_fix(
 - Models: {[m['name'] for m in design.get('data_models', [])]}
 - Modules: {[m['file'] + ' → exports ' + str(m['exports']) for m in design.get('module_interfaces', [])]}
 - Install command: {install}
-- GitHub: github.com/{GH_USER}/{repo_name}"""
+- GitHub: github.com/{GH_USER}/{repo_name}
+- All files in project: {list(files.keys())}"""
 
     snapshot = f"=== README.md (first 800 chars) ===\n{readme[:800]}\n"
     for path, content in files.items():
@@ -533,7 +622,7 @@ FILE SNAPSHOTS:
 CHECK FOR AND FIX ALL OF THE FOLLOWING:
 
 Code issues:
-1. Import referencing a path or name not in the file tree
+1. Import referencing a path or name NOT in the project files list above
 2. Function/class called in one file but defined with a different name in another
 3. Stub implementations: pass, raise NotImplementedError, empty body
 4. assert True or assert x or True — meaningless test assertions
@@ -542,15 +631,15 @@ Code issues:
 README issues:
 6. URLs containing "your-org" or "your-username" → replace with github.com/{GH_USER}/{repo_name}
 7. Wrong install command → should be: {install}
-8. Fake email addresses (alice@, bob@, maintainer@, anything@example.com) → remove entirely
+8. Fake email addresses → remove entirely
 9. "Created by", "Maintained by", "Contact:" with fake names → remove entirely
 10. "*End of README*" or similar markers → remove
-11. "License" or "MIT License" section → remove entirely — do not mention any license
+11. "License" or "MIT License" section → remove entirely
 12. Missing API Reference section → add it
+13. Missing Architecture section with diagram → add it
 
 General:
-13. Any mention of "generated", "auto-generated", "AI" in comments or docstrings → remove
-14. "# This file contains only minimal scaffolding" or similar → the file needs real content, flag it
+14. Any mention of "generated", "auto-generated", "AI" in comments or docstrings → remove
 
 Return ONLY this JSON — include a fix for EVERY issue found, empty list if none:
 {{
@@ -587,8 +676,6 @@ Return ONLY this JSON — include a fix for EVERY issue found, empty list if non
             if path == "README.md":
                 readme = fixed
             else:
-                # Save both updates to existing files AND new files the validator creates
-                # (e.g. a missing types.ts or models.ts that multiple modules import from)
                 files[path] = fixed
 
         return files, readme
@@ -604,22 +691,21 @@ def generate_project(analysis: dict) -> dict:
     profile = get_profile(analysis["category"])
     print(f"[generator] Category: {analysis['category']} — {profile['quality_bar'][:70]}...")
 
-    # Phase 0 — design (source context only used here)
     design = design_project(analysis)
     print(f"[generator] Design: '{design['project_name']}' — {design['tagline']}")
     print(f"[generator] Abstractions: {[a['name'] for a in design.get('core_abstractions', [])]}")
     time.sleep(6)
 
-    # Phase 1 — file tree
     print("[generator] Phase 1: Planning file tree...")
     plan = plan_project(analysis, design)
     file_tree = plan.get("file_tree", [])
+    # FIX 1: Build the full file path list once and pass it to every generation call
+    all_file_paths = [f["path"] for f in file_tree]
     print(f"[generator] Planned {len(file_tree)} files:")
     for f in file_tree:
         print(f"  • {f['path']}")
     time.sleep(6)
 
-    # Phase 2 — write files
     print("\n[generator] Phase 2: Writing files...")
     files: dict[str, str] = {}
 
@@ -628,7 +714,9 @@ def generate_project(analysis: dict) -> dict:
         purpose = spec["purpose"]
         print(f"  [{i+1}/{len(file_tree)}] {path}")
         try:
-            files[path] = generate_file(path, purpose, plan, analysis, design, files)
+            files[path] = generate_file(
+                path, purpose, plan, analysis, design, files, all_file_paths
+            )
             print(f"         → {files[path].count(chr(10))} lines")
         except Exception as e:
             print(f"  ⚠ Failed {path}: {e}")
@@ -637,11 +725,11 @@ def generate_project(analysis: dict) -> dict:
 
     readme = files.pop("README.md", f"# {plan['repo_name']}\n\n{plan['description']}\n")
 
-    # Phase 2b — stub detection and regeneration
     print("\n[generator] Phase 2b: Checking for stubs...")
-    files = _check_and_regenerate_stubs(files, file_tree, plan, analysis, design)
+    files = _check_and_regenerate_stubs(
+        files, file_tree, plan, analysis, design, all_file_paths
+    )
 
-    # Phase 3 — validation
     print("\n[generator] Phase 3: Validation pass...")
     files, readme = validate_and_fix(files, readme, plan, design, analysis)
 
