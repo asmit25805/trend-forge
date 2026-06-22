@@ -381,7 +381,10 @@ def _is_config(path: str) -> bool:
 def _is_core(path: str) -> bool:
     parts = path.lower().split("/")
     keywords = {"core", "engine", "pipeline", "runtime", "bootstrap"}
-    return any(p in keywords for p in parts) and not _is_test(path)
+    # Also treat direct src/ files as core (e.g. src/catalog.ts, src/types.ts)
+    # so they land in 'feat: implement core engine' not 'feat: add remaining modules'
+    is_direct_src = len(parts) == 2 and parts[0] == "src"
+    return (any(p in keywords for p in parts) or is_direct_src) and not _is_test(path)
 
 def _is_support(path: str) -> bool:
     parts = path.lower().split("/")
