@@ -78,5 +78,15 @@
     "generated_url": "https://github.com/asmit25805/llm-router",
     "concept": "A TypeScript monorepo that provides a CLI, SDK, and IDE integration plugins to route LLM requests through the Duel Agents proxy, automatically configuring environment files for multiple AI tools.",
     "inspiration_angle": "A unified, language\u2011agnostic routing layer that abstracts multiple LLM providers behind a single proxy, automatically selects the cheapest passing response, and exposes the configuration through environment files\u2014extensible to any future LLM provider or custom routing policy beyond the current OpenAI/Anthropic focus."
+  },
+  {
+    "date": "2026-06-22T09:40:40.250700",
+    "category": "automation",
+    "source_repo": "Forward-Future/loop-library",
+    "source_stars": 842,
+    "generated_repo": "prompt-registry",
+    "generated_url": "https://github.com/asmit25805/prompt-registry",
+    "concept": "A serverless catalog service that stores, versions, and serves repeatable AI\u2011agent loop prompts (structured workflows) with a public web UI and an optional skill for agents to discover and adapt loops.",
+    "inspiration_angle": "Extend the Loop Library into a language\u2011agnostic \"Prompt Loop Registry\" that supports multiple LLM providers, adds plug\u2011in verification modules (e.g., safety, cost, latency), and offers a marketplace where community members can publish, monetize, and version loops, turning the catalog into a full ecosystem rather than a static library."
   }
 ]
