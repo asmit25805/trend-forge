@@ -88,5 +88,15 @@
     "generated_url": "https://github.com/asmit25805/prompt-registry",
     "concept": "A serverless catalog service that stores, versions, and serves repeatable AI\u2011agent loop prompts (structured workflows) with a public web UI and an optional skill for agents to discover and adapt loops.",
     "inspiration_angle": "Extend the Loop Library into a language\u2011agnostic \"Prompt Loop Registry\" that supports multiple LLM providers, adds plug\u2011in verification modules (e.g., safety, cost, latency), and offers a marketplace where community members can publish, monetize, and version loops, turning the catalog into a full ecosystem rather than a static library."
+  },
+  {
+    "date": "2026-06-22T11:48:13.741060",
+    "category": "llm",
+    "source_repo": "withkynam/vibecode-pro-max-kit",
+    "source_stars": 963,
+    "generated_repo": "autocode-orchestrator",
+    "generated_url": "https://github.com/asmit25805/autocode-orchestrator",
+    "concept": "A spec\u2011driven, multi\u2011agent orchestration framework that lets LLMs (Claude, Codex, etc.) autonomously plan, code, test, and update a project through a defined 7\u2011phase workflow.",
+    "inspiration_angle": "Instead of a simple code\u2011completion assistant, this project treats the LLM as a team of specialized agents with persistent, spec\u2011driven memory, turning the development process into an autonomous, self\u2011correcting workflow. The novel twist is the combination of TOML\u2011defined agents, a shared context cache, and a full\u2011stack autopilot that can run from start to finish with zero human gating, which is distinct from typical Copilot\u2011style extensions."
   }
 ]

@@ -1,14 +1,15 @@
 {
   "repos": [
-    "Forward-Future/loop-library",
     "yb2460/harness-anything",
-    "2aronS/Duel-Agents",
-    "omnigent-ai/omnigent",
     "webc-site/math",
+    "withkynam/vibecode-pro-max-kit",
+    "Forward-Future/loop-library",
     "vercel/eve",
-    "XiaomiMiMo/MiMo-Code",
+    "code-yeongyu/lazycodex",
     "DietrichGebert/ponytail",
-    "code-yeongyu/lazycodex"
+    "2aronS/Duel-Agents",
+    "XiaomiMiMo/MiMo-Code",
+    "omnigent-ai/omnigent"
   ],
-  "last_category_index": 4
+  "last_category_index": 5
 }
