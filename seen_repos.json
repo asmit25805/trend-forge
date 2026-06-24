@@ -1,16 +1,17 @@
 {
   "repos": [
-    "DietrichGebert/ponytail",
-    "2aronS/Duel-Agents",
-    "vercel/eve",
     "yb2460/harness-anything",
-    "XiaomiMiMo/MiMo-Code",
-    "Forward-Future/loop-library",
-    "withkynam/vibecode-pro-max-kit",
-    "code-yeongyu/lazycodex",
+    "sums001/Windows-Copilot-API",
     "omnigent-ai/omnigent",
+    "Forward-Future/loop-library",
     "StarTrail-org/PixelRAG",
-    "webc-site/math"
+    "code-yeongyu/lazycodex",
+    "XiaomiMiMo/MiMo-Code",
+    "webc-site/math",
+    "2aronS/Duel-Agents",
+    "withkynam/vibecode-pro-max-kit",
+    "vercel/eve",
+    "DietrichGebert/ponytail"
   ],
-  "last_category_index": 6
+  "last_category_index": 7
 }
