@@ -118,5 +118,15 @@
     "generated_url": "https://github.com/asmit25805/browser-llm-proxy",
     "concept": "Provides an OpenAI\u2011compatible REST interface that proxies Microsoft Copilot chat by reverse\u2011engineering its web protocol and reusing a signed\u2011in user session.",
     "inspiration_angle": "Instead of building a generic LLM proxy, this project uniquely reverse\u2011engineers the consumer Copilot web protocol and reuses the user's existing Microsoft session, turning a free consumer product into a self\u2011hosted, OpenAI\u2011compatible API\u2014a novel twist that leverages browser\u2011based authentication and WebSocket framing to provide free LLM access."
+  },
+  {
+    "date": "2026-06-25T07:35:31.925109",
+    "category": "ai",
+    "source_repo": "agent0ai/dox",
+    "source_stars": 979,
+    "generated_repo": "prompt-sync",
+    "generated_url": "https://github.com/asmit25805/prompt-sync",
+    "concept": "A markdown\u2011based framework that lets AI code\u2011generation agents follow a hierarchical set of AGENTS.md files to obtain precise project context and automatically keep those docs in sync.",
+    "inspiration_angle": "DOX treats AGENTS.md as both a living specification and a change log, turning the documentation file itself into a bidirectional contract that agents can read and write, which differentiates it from typical static README\u2011only approaches."
   }
 ]

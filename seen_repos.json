@@ -1,17 +1,18 @@
 {
   "repos": [
-    "yb2460/harness-anything",
-    "sums001/Windows-Copilot-API",
+    "StarTrail-org/PixelRAG",
+    "DietrichGebert/ponytail",
+    "webc-site/math",
     "omnigent-ai/omnigent",
     "Forward-Future/loop-library",
-    "StarTrail-org/PixelRAG",
-    "code-yeongyu/lazycodex",
-    "XiaomiMiMo/MiMo-Code",
-    "webc-site/math",
-    "2aronS/Duel-Agents",
-    "withkynam/vibecode-pro-max-kit",
+    "agent0ai/dox",
     "vercel/eve",
-    "DietrichGebert/ponytail"
+    "code-yeongyu/lazycodex",
+    "sums001/Windows-Copilot-API",
+    "yb2460/harness-anything",
+    "withkynam/vibecode-pro-max-kit",
+    "XiaomiMiMo/MiMo-Code",
+    "2aronS/Duel-Agents"
   ],
-  "last_category_index": 7
+  "last_category_index": 0
 }
