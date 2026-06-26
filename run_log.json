@@ -128,5 +128,15 @@
     "generated_url": "https://github.com/asmit25805/prompt-sync",
     "concept": "A markdown\u2011based framework that lets AI code\u2011generation agents follow a hierarchical set of AGENTS.md files to obtain precise project context and automatically keep those docs in sync.",
     "inspiration_angle": "DOX treats AGENTS.md as both a living specification and a change log, turning the documentation file itself into a bidirectional contract that agents can read and write, which differentiates it from typical static README\u2011only approaches."
+  },
+  {
+    "date": "2026-06-26T07:44:24.857762",
+    "category": "developer-tools",
+    "source_repo": "Dong90/oh-my-taiyiforge",
+    "source_stars": 560,
+    "generated_repo": "forgeflow",
+    "generated_url": "https://github.com/asmit25805/forgeflow",
+    "concept": "A TypeScript CLI that orchestrates LLM agents through a nine\u2011stage, contract\u2011driven workflow for code generation, review, testing and integration.",
+    "inspiration_angle": "Unlike typical AI\u2011code assistants that act as a single\u2011step autocomplete, TaiyiForge treats the LLM as a collaborative agent within a formal engineering process, coupling it with a structured PITFALLS knowledge base and deterministic replay. This creates a unique blend of AI\u2011augmented development and traditional software\u2011process rigor."
   }
 ]
