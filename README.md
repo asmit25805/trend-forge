@@ -222,19 +222,6 @@ Each output project includes:
 
 What it never includes: copied source code, fake emails, placeholder text, stub implementations, or any mention of AI generation.
 
----
-
-## Projects generated so far
-
-| Project | Description | Category | Inspired by |
-|---------|-------------|----------|-------------|
-| [native-mathml-optimizer](https://github.com/asmit25805/native-mathml-optimizer) | TeX→MathML lexer/parser/renderer in TypeScript | developer-tools | — |
-| [codepilot-cli](https://github.com/asmit25805/codepilot-cli) | AI-powered refactor tool for TypeScript codebases | cli | — |
-| [flowforge](https://github.com/asmit25805/flowforge) | Filesystem-driven workflow engine with SQLite | automation | — |
-| [llm-router](https://github.com/asmit25805/llm-router) | LLM proxy with plugin architecture and policy engine | llm | — |
-| [autocode-orchestrator](https://github.com/asmit25805/autocode-orchestrator) | 0 stubs, 3 validator fixes — cleanest run | agent | — |
-| [browser-llm-proxy](https://github.com/asmit25805/browser-llm-proxy) | OpenAI-compatible proxy for web LLMs | api | — |
-| [testpilot](https://github.com/asmit25805/testpilot) | Terminal test generator and runner | developer-tools | — |
 
 ---
 
