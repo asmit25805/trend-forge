@@ -2,12 +2,10 @@
 TrendForge — Main pipeline orchestrator.
 Runs the full cycle: find trending repo → analyze → generate → push.
 """
-
 import sys
 import json
 from datetime import datetime
 from pathlib import Path
-
 from trending import pick_unseen_repo, load_seen, save_seen
 from analyzer import analyze_repo
 from generator import generate_project
@@ -56,11 +54,18 @@ def run():
     print(f"[main] Why trending: {analysis['why_trending']}")
     print(f"[main] Angle: {analysis['inspiration_angle']}\n")
 
-    # 4. Generate original project (3-phase)
+    # 4. Generate original project (4-phase)
     print("[main] Generating project...")
     project = generate_project(analysis)
     print(f"[main] Project name: {project['repo_name']}")
     print(f"[main] Files: {list(project['files'].keys())}\n")
+
+    skipped_files = project.get("skipped_files", [])
+    if skipped_files:
+        print(f"[main] ⚠ {len(skipped_files)} file(s) were skipped due to unrecoverable stubs:")
+        for p in skipped_files:
+            print(f"  ✗ {p}")
+        print()
 
     # 5. Push to GitHub
     print("[main] Pushing to GitHub...")
@@ -71,7 +76,7 @@ def run():
     state["last_category_index"] = new_cat_idx
     save_seen(state)
 
-    # 7. Log the run
+    # 7. Log the run — including any skipped stub files for post-run analysis
     log = load_log()
     log.append({
         "date": datetime.utcnow().isoformat(),
@@ -82,11 +87,15 @@ def run():
         "generated_url": repo_url,
         "concept": analysis["concept"],
         "inspiration_angle": analysis["inspiration_angle"],
+        "files_pushed": list(project["files"].keys()),
+        "files_skipped": skipped_files,  # [] when everything succeeded
     })
     save_log(log)
 
     print(f"\n{'='*60}")
     print(f"✅ Done! {repo_url}")
+    if skipped_files:
+        print(f"⚠  {len(skipped_files)} stub(s) skipped: {skipped_files}")
     print(f"{'='*60}\n")
 
 
