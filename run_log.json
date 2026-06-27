@@ -138,5 +138,15 @@
     "generated_url": "https://github.com/asmit25805/forgeflow",
     "concept": "A TypeScript CLI that orchestrates LLM agents through a nine\u2011stage, contract\u2011driven workflow for code generation, review, testing and integration.",
     "inspiration_angle": "Unlike typical AI\u2011code assistants that act as a single\u2011step autocomplete, TaiyiForge treats the LLM as a collaborative agent within a formal engineering process, coupling it with a structured PITFALLS knowledge base and deterministic replay. This creates a unique blend of AI\u2011augmented development and traditional software\u2011process rigor."
+  },
+  {
+    "date": "2026-06-27T06:48:25.757742",
+    "category": "cli",
+    "source_repo": "TestSprite/testsprite-cli",
+    "source_stars": 1118,
+    "generated_repo": "skillforge-cli",
+    "generated_url": "https://github.com/asmit25805/skillforge-cli",
+    "concept": "A TypeScript CLI that configures TestSprite credentials, installs AI\u2011agent verification skills, and drives TestSprite test runs from the terminal.",
+    "inspiration_angle": "A unified CLI that not only talks to a testing service but also provisions AI\u2011agent verification skills across heterogeneous agents (Claude, Cursor, Codex) with safe file manipulation, turning the traditionally manual skill\u2011install step into an automated, test\u2011driven part of the development workflow."
   }
 ]
