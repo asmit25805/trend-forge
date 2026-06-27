@@ -1,10 +1,26 @@
 """
-Creates a new GitHub repo and pushes all generated files.
-Spreads commits across logical groups to look like real development history.
+Creates/updates GitHub repos with generated project files.
 
+TWO MODES controlled by the TRENDFORGE_MONOREPO env var:
+
+  TRENDFORGE_MONOREPO=0 (default, original behaviour)
+    Creates a brand-new top-level repo for every generated project.
+
+  TRENDFORGE_MONOREPO=1
+    Pushes all files into a single existing repo called `trendforge-output`
+    under a dated subfolder:
+      trendforge-output/
+        2026-06-28-skillforge-cli/
+          README.md
+          src/...
+          ...
+
+    The root README.md of trendforge-output is kept up-to-date as a running
+    index of every project generated so far.
+
+Spreads commits across logical groups to look like real development history.
 Uses the Git Tree API to push each batch as a single atomic commit, which
-avoids the race condition where the Contents API 404s on nested paths
-(e.g. .github/workflows/) because the branch isn't indexed yet.
+avoids the race condition where the Contents API 404s on nested paths.
 """
 
 import os
@@ -15,6 +31,10 @@ from datetime import datetime
 
 GITHUB_TOKEN = os.environ["PAT_TOKEN"]
 GITHUB_USERNAME = os.environ["GH_USERNAME"]
+
+# Set TRENDFORGE_MONOREPO=1 in GitHub Actions secrets / local env to enable monorepo mode.
+MONOREPO_MODE = os.environ.get("TRENDFORGE_MONOREPO", "0").strip() == "1"
+MONOREPO_REPO = "trendforge-output"  # must already exist on the account
 
 HEADERS = {
     "Authorization": f"token {GITHUB_TOKEN}",
@@ -139,8 +159,7 @@ def _mit_license() -> str:
     )
 
 
-def _contributing(repo_name: str) -> str:
-    repo_url = f"https://github.com/{GITHUB_USERNAME}/{repo_name}"
+def _contributing(repo_name: str, repo_url: str) -> str:
     return _CONTRIBUTING_TEMPLATE.format(repo_name=repo_name, repo_url=repo_url)
 
 
@@ -180,7 +199,7 @@ def preflight_check():
     _check_workflow_scope({".github/workflows/ci.yml": ""})
 
 
-# ── Repo creation ─────────────────────────────────────────────────────────────
+# ── Repo creation (standalone mode only) ─────────────────────────────────────
 
 def create_repo(name: str, description: str, topics: list[str]) -> tuple[str, str]:
     url = "https://api.github.com/user/repos"
@@ -286,6 +305,16 @@ def _get_commit_tree(full_name: str, commit_sha: str) -> str:
     r.raise_for_status()
 
 
+def _get_head_sha(full_name: str) -> str:
+    """Get the current HEAD commit SHA of the main branch."""
+    r = requests.get(
+        f"https://api.github.com/repos/{full_name}/git/refs/heads/main",
+        headers=HEADERS,
+    )
+    r.raise_for_status()
+    return r.json()["object"]["sha"]
+
+
 def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha: str) -> str:
     blobs = []
     for path, content in batch.items():
@@ -302,10 +331,155 @@ def _push_batch(full_name: str, batch: dict[str, str], message: str, parent_sha:
     return commit_sha
 
 
-# ── Main push entry point ─────────────────────────────────────────────────────
+# ── Monorepo helpers ──────────────────────────────────────────────────────────
 
-def push_project(project: dict) -> str:
-    _verify_authenticated_user()
+def _monorepo_full_name() -> str:
+    return f"{GITHUB_USERNAME}/{MONOREPO_REPO}"
+
+
+def _ensure_monorepo_exists() -> str:
+    """
+    Returns the HEAD SHA of the monorepo main branch.
+    Creates the repo with a root README if it doesn't exist yet.
+    """
+    full_name = _monorepo_full_name()
+    r = requests.get(
+        f"https://api.github.com/repos/{full_name}/git/refs/heads/main",
+        headers=HEADERS,
+    )
+    if r.status_code == 200:
+        sha = r.json()["object"]["sha"]
+        print(f"[pusher][monorepo] Using existing {full_name} (HEAD: {sha[:7]})")
+        return sha
+
+    # Repo doesn't exist — create it with an initial README
+    print(f"[pusher][monorepo] Creating {full_name}...")
+    payload = {
+        "name": MONOREPO_REPO,
+        "description": "Daily AI-generated projects by TrendForge — one per subfolder.",
+        "private": False,
+        "auto_init": True,
+        "has_issues": False,
+        "has_projects": False,
+        "has_wiki": False,
+    }
+    resp = requests.post("https://api.github.com/user/repos", headers=HEADERS, json=payload)
+    resp.raise_for_status()
+    sha = _wait_for_init_commit(full_name)
+
+    # Write an index README so the repo isn't empty
+    index_readme = _build_index_readme([])
+    sha = _push_batch(full_name, {"README.md": index_readme}, "chore: init trendforge-output index", sha)
+    return sha
+
+
+def _fetch_existing_index(full_name: str) -> list[dict]:
+    """
+    Reads the root README.md from the monorepo and extracts the project table rows.
+    Returns a list of dicts with keys: date, folder, description, category, source.
+    Falls back to empty list on any parse error.
+    """
+    url = f"https://api.github.com/repos/{full_name}/contents/README.md"
+    r = requests.get(url, headers={**HEADERS, "Accept": "application/vnd.github.raw"})
+    if r.status_code != 200:
+        return []
+
+    entries = []
+    for line in r.text.splitlines():
+        # Table rows look like: | 2026-06-28 | [name](./folder/) | desc | cat | [src](url) |
+        if line.startswith("| 20") and line.count("|") >= 5:
+            parts = [p.strip() for p in line.strip("|").split("|")]
+            if len(parts) >= 5:
+                entries.append({
+                    "date": parts[0],
+                    "folder": parts[1],
+                    "description": parts[2],
+                    "category": parts[3],
+                    "source": parts[4],
+                })
+    return entries
+
+
+def _build_index_readme(entries: list[dict]) -> str:
+    """Renders the root README.md for the monorepo."""
+    header = f"""# trendforge-output
+
+Daily AI-generated open-source projects, each inspired by a trending GitHub repo.
+Generated by [TrendForge](https://github.com/{GITHUB_USERNAME}/trend-forge) — running every day via GitHub Actions.
+
+Each subfolder is a self-contained project with its own README, source code, tests, and CI config.
+
+## Projects
+
+| Date | Project | Description | Category | Inspired by |
+|------|---------|-------------|----------|-------------|
+"""
+    if not entries:
+        rows = "| — | — | No projects yet | — | — |\n"
+    else:
+        rows = ""
+        for e in reversed(entries):  # newest first
+            rows += f"| {e['date']} | {e['folder']} | {e['description']} | {e['category']} | {e['source']} |\n"
+
+    footer = f"""
+---
+*Auto-updated daily. Source: [trend-forge](https://github.com/{GITHUB_USERNAME}/trend-forge)*
+"""
+    return header + rows + footer
+
+
+def _push_to_monorepo(project: dict) -> str:
+    """
+    Pushes all project files into trendforge-output/<date>-<repo_name>/ as a single commit.
+    Also updates the root README.md index.
+    Returns the URL to the subfolder on GitHub.
+    """
+    full_name = _monorepo_full_name()
+    parent_sha = _ensure_monorepo_exists()
+
+    repo_name = project["repo_name"]
+    date_str = datetime.utcnow().strftime("%Y-%m-%d")
+    folder = f"{date_str}-{repo_name}"
+    repo_url = f"https://github.com/{full_name}/tree/main/{folder}"
+
+    readme = project.get("readme") or f"# {repo_name}\n\n{project.get('description', '')}\n"
+    files: dict = project.get("files", {})
+
+    # Prefix every file path with the subfolder
+    prefixed: dict[str, str] = {}
+    prefixed[f"{folder}/README.md"] = readme
+    prefixed[f"{folder}/LICENSE"] = _mit_license()
+    prefixed[f"{folder}/CONTRIBUTING.md"] = _contributing(repo_name, repo_url)
+
+    for path, content in files.items():
+        prefixed[f"{folder}/{path}"] = content
+
+    # Fetch existing index entries and append the new project
+    existing_entries = _fetch_existing_index(full_name)
+    source_url = project.get("inspired_by_url", "")
+    source_repo = project.get("inspired_by", "")
+    new_entry = {
+        "date": date_str,
+        "folder": f"[{repo_name}](./{folder}/)",
+        "description": project.get("description", ""),
+        "category": project.get("category", ""),
+        "source": f"[{source_repo}]({source_url})" if source_url else source_repo,
+    }
+    all_entries = existing_entries + [new_entry]
+    prefixed["README.md"] = _build_index_readme(all_entries)
+
+    print(f"[pusher][monorepo] Pushing {len(prefixed)} files to {full_name}/{folder}...")
+    commit_msg = f"feat: add {repo_name} ({date_str})"
+    _push_batch(full_name, prefixed, commit_msg, parent_sha)
+
+    print(f"[pusher][monorepo] ✅ {repo_url}")
+    return repo_url
+
+
+# ── Standalone mode helpers ───────────────────────────────────────────────────
+
+def push_standalone(project: dict) -> str:
+    """Original behaviour: create a new top-level repo for each project."""
     _check_workflow_scope(project.get("files", {}))
 
     full_name, parent_sha = create_repo(
@@ -315,6 +489,7 @@ def push_project(project: dict) -> str:
     )
 
     repo_name = project["repo_name"]
+    repo_url = f"https://github.com/{full_name}"
     readme = project.get("readme") or f"# {repo_name}\n"
     files: dict = project.get("files", {})
 
@@ -330,12 +505,10 @@ def push_project(project: dict) -> str:
     )
     other_files = {p: c for p, c in files.items() if p not in assigned}
 
-    # Initial commit: README + LICENSE + CONTRIBUTING.md + issue templates + CI
-    # All of these go in the first commit so the repo looks complete from day one
     initial_batch = {
         "README.md": readme,
         "LICENSE": _mit_license(),
-        "CONTRIBUTING.md": _contributing(repo_name),
+        "CONTRIBUTING.md": _contributing(repo_name, repo_url),
         ".github/ISSUE_TEMPLATE/bug_report.md": _BUG_REPORT_TEMPLATE,
         ".github/ISSUE_TEMPLATE/feature_request.md": _FEATURE_REQUEST_TEMPLATE,
         **github_files,
@@ -362,12 +535,33 @@ def push_project(project: dict) -> str:
         parent_sha = _push_batch(full_name, batch, commit_msg, parent_sha)
         time.sleep(1)
 
-    repo_url = f"https://github.com/{full_name}"
     print(f"\n[pusher] ✅ Done! Live at: {repo_url}")
     return repo_url
 
 
-# ── File classification helpers ───────────────────────────────────────────────
+# ── Main push entry point ─────────────────────────────────────────────────────
+
+def push_project(project: dict) -> str:
+    """
+    Routes to monorepo or standalone mode based on TRENDFORGE_MONOREPO env var.
+
+    Monorepo (TRENDFORGE_MONOREPO=1):
+      All projects land in trendforge-output/<date>-<name>/ — your main profile stays clean.
+
+    Standalone (TRENDFORGE_MONOREPO=0, default):
+      Creates a fresh top-level repo per project — original behaviour, unchanged.
+    """
+    _verify_authenticated_user()
+
+    if MONOREPO_MODE:
+        print(f"[pusher] Mode: MONOREPO → {MONOREPO_REPO}")
+        return _push_to_monorepo(project)
+    else:
+        print("[pusher] Mode: STANDALONE (new repo per project)")
+        return push_standalone(project)
+
+
+# ── File classification helpers (standalone mode) ─────────────────────────────
 
 def _is_config(path: str) -> bool:
     name = path.split("/")[-1].lower()
@@ -381,8 +575,6 @@ def _is_config(path: str) -> bool:
 def _is_core(path: str) -> bool:
     parts = path.lower().split("/")
     keywords = {"core", "engine", "pipeline", "runtime", "bootstrap"}
-    # Also treat direct src/ files as core (e.g. src/catalog.ts, src/types.ts)
-    # so they land in 'feat: implement core engine' not 'feat: add remaining modules'
     is_direct_src = len(parts) == 2 and parts[0] == "src"
     return (any(p in keywords for p in parts) or is_direct_src) and not _is_test(path)
 
