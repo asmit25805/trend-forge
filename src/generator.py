@@ -5,6 +5,10 @@ Phase 0: Design doc — API contracts, data models, module interfaces
 Phase 1: Plan       — file tree informed by design doc
 Phase 2: Generate   — each file written against the spec
 Phase 2b: Stub check — regenerate any file that came back as a stub
+           • Attempt 1: re-run generate_file
+           • Attempt 2: re-run generate_file (15s later)
+           • Fallback:  reviewer-mode rewrite via _fix_stub_via_validator
+           • Final:     skip file entirely, log it, let Phase 3 catch broken imports
 Phase 3: Validate   — static consistency check
 
 No AI watermarks. Comments read like a specific human developer wrote them.
@@ -342,14 +346,12 @@ def plan_project(analysis: dict, design: dict) -> dict:
         f"  - {m['file']}: exports {m['exports']}" for m in design.get("module_interfaces", [])
     )
 
-    # FIX 1: Tell the model exactly which shared types file must exist
     types_requirement = ""
     if types_file:
         types_requirement = f"""- REQUIRED: include '{types_file}' — this is the shared types/models file.
   ALL other modules must import their data models from this single file.
   This prevents import errors where modules reference types that don't exist."""
 
-    # FIX 4: Tighten topics requirement
     prompt = f"""Turn this design document into a concrete file tree.
 
 PROJECT: {design['project_name']}
@@ -399,7 +401,7 @@ Return ONLY this JSON (no extra text, no truncation):
     )
     result = _parse_json(raw)
 
-    # FIX 1: Enforce the types file exists in the tree regardless of what the model planned
+    # Enforce the types file exists in the tree regardless of what the model planned
     if types_file:
         existing_paths = {f["path"] for f in result.get("file_tree", [])}
         if types_file not in existing_paths:
@@ -450,7 +452,6 @@ Data models:
 Key design decisions:
 {chr(10).join('- ' + d for d in design.get('key_design_decisions', []))}"""
 
-    # FIX 1: Pass the FULL list of planned files so the model knows exactly what exists
     files_list = "\n".join(f"  - {p}" for p in all_file_paths)
     files_context = f"""
 ALL FILES IN THIS PROJECT (only import from paths listed here):
@@ -463,14 +464,12 @@ ALL FILES IN THIS PROJECT (only import from paths listed here):
     if already_written:
         written_context = "\nALREADY WRITTEN FILES (match naming, imports, and style exactly):\n"
         for p, content in list(already_written.items())[-4:]:
-            # FIX 2: Increased from 1500 to 3000 chars so full class signatures are visible
             preview = content[:3000].replace("\n", "\\n")
             written_context += f"\n// {p}\n{preview}...\n"
 
     install = _install_cmd(language, repo_name)
     ci_setup = _ci_setup(language)
 
-    # FIX 3: Build ASCII architecture diagram to inject into README
     arch_diagram = ""
     if path == "README.md":
         arch_diagram = f"""
@@ -553,6 +552,75 @@ Write the complete file now. Do not add any preamble or explanation:"""
 
 # ── Phase 2b: Stub detection and regeneration ─────────────────────────────────
 
+def _fix_stub_via_validator(
+    path: str,
+    content: str,
+    files: dict,
+    plan: dict,
+    design: dict,
+    analysis: dict,
+) -> str | None:
+    """
+    Last-resort stub fix: reviewer-mode rewrite with full file content + design spec visible.
+    Uses a different prompt framing (reviewer vs generator) which often succeeds where
+    the generator gave up. Returns fixed content string, or None if still a stub or call failed.
+    """
+    language = design.get("language", "")
+    repo_name = plan["repo_name"]
+
+    # Give sibling file context so imports stay consistent
+    siblings = ""
+    for p, c in list(files.items())[-4:]:
+        if p != path:
+            siblings += f"\n=== {p} (first 600 chars) ===\n{c[:600]}\n"
+
+    # Pull this file's module spec from the design doc if it exists
+    module_spec = next(
+        (m for m in design.get("module_interfaces", []) if m["file"] == path), {}
+    )
+
+    prompt = f"""A file failed two generation attempts and came back as a stub both times.
+Rewrite it from scratch with a COMPLETE, real implementation.
+
+PROJECT: {repo_name} (github.com/{GH_USER}/{repo_name})
+Language: {language}
+Abstractions: {[a['name'] for a in design.get('core_abstractions', [])]}
+Data models: {[m['name'] for m in design.get('data_models', [])]}
+All files in project: {list(files.keys())}
+
+SIBLING FILES (match imports and style exactly):
+{siblings}
+
+MODULE SPEC FROM DESIGN:
+{json.dumps(module_spec, indent=2)}
+
+STUBBED FILE TO REPLACE — {path}:
+{content}
+
+RULES:
+- Output raw file content only — no markdown fences, no explanation before or after
+- Every function must have a real body — no pass, no raise NotImplementedError, no empty bodies
+- At least 80 lines of real logic
+- Import only from files listed in "All files in project" above
+- Never mention AI, generation, stubs, or placeholders anywhere in the output
+
+Write the complete file now:"""
+
+    try:
+        fixed = _call(
+            [{"role": "system", "content": FILE_SYSTEM}, {"role": "user", "content": prompt}],
+            max_tokens=6000,
+            temperature=0.2,  # Lower temp = more complete, less creative drift
+        )
+        if _is_stub(fixed):
+            print(f"  ✗ Validator fallback also produced a stub for {path} — will skip file")
+            return None
+        return fixed
+    except Exception as e:
+        print(f"  ✗ Validator fallback call failed for {path}: {e}")
+        return None
+
+
 def _check_and_regenerate_stubs(
     files: dict,
     file_tree: list,
@@ -560,29 +628,88 @@ def _check_and_regenerate_stubs(
     analysis: dict,
     design: dict,
     all_file_paths: list[str],
-) -> dict:
+) -> tuple[dict, list[str]]:
+    """
+    Scans all generated files for stub markers and attempts recovery in three stages:
+      1. Regenerate via generate_file (attempt 1)
+      2. Regenerate via generate_file (attempt 2, 15s later)
+      3. Reviewer-mode rewrite via _fix_stub_via_validator
+      4. Skip the file entirely if all three fail
+
+    Returns (files_dict, skipped_paths) so the caller can log what was dropped.
+    """
     purpose_map = {spec["path"]: spec["purpose"] for spec in file_tree}
+    skipped: list[str] = []
 
     for path in list(files.keys()):
         content = files[path]
-        if _is_stub(content):
-            purpose = purpose_map.get(path, "implement the module described in the design doc")
-            print(f"  ⚠ Stub detected in {path} — regenerating...")
-            time.sleep(5)
-            try:
-                new_content = generate_file(
-                    path, purpose, plan, analysis, design, files, all_file_paths
-                )
-                if _is_stub(new_content):
-                    print(f"  ⚠ Still a stub after regeneration: {path} — keeping original")
-                else:
-                    files[path] = new_content
-                    print(f"         → regenerated: {new_content.count(chr(10))} lines")
-            except Exception as e:
-                print(f"  ⚠ Regeneration failed for {path}: {e}")
-            time.sleep(8)
+        if not _is_stub(content):
+            continue
 
-    return files
+        purpose = purpose_map.get(path, "implement the module described in the design doc")
+        print(f"  ⚠ Stub detected in {path} — regenerating (attempt 1/2)...")
+        time.sleep(5)
+
+        # ── Attempt 1 ────────────────────────────────────────────────────────
+        try:
+            attempt1 = generate_file(
+                path, purpose, plan, analysis, design, files, all_file_paths
+            )
+        except Exception as e:
+            print(f"  ✗ Attempt 1 exception for {path}: {e}")
+            attempt1 = content  # keep original so attempt 2 has something to improve on
+
+        if not _is_stub(attempt1):
+            files[path] = attempt1
+            print(f"  ✓ Fixed on attempt 1: {attempt1.count(chr(10))} lines")
+            time.sleep(8)
+            continue
+
+        # ── Attempt 2 ────────────────────────────────────────────────────────
+        print(f"  ⚠ Still a stub — regenerating (attempt 2/2)...")
+        time.sleep(15)
+
+        try:
+            attempt2 = generate_file(
+                path, purpose, plan, analysis, design, files, all_file_paths
+            )
+        except Exception as e:
+            print(f"  ✗ Attempt 2 exception for {path}: {e}")
+            attempt2 = attempt1
+
+        if not _is_stub(attempt2):
+            files[path] = attempt2
+            print(f"  ✓ Fixed on attempt 2: {attempt2.count(chr(10))} lines")
+            time.sleep(8)
+            continue
+
+        # ── Validator fallback ────────────────────────────────────────────────
+        print(f"  ⚠ Both attempts failed for {path} — trying reviewer-mode fallback...")
+        time.sleep(10)
+
+        fixed = _fix_stub_via_validator(path, attempt2, files, plan, design, analysis)
+
+        if fixed is not None:
+            files[path] = fixed
+            print(f"  ✓ Reviewer fallback succeeded for {path}: {fixed.count(chr(10))} lines")
+        else:
+            # All three strategies failed — drop the file entirely.
+            # A broken stub is worse than a missing file: it silently breaks imports
+            # and tests, whereas a missing file causes an explicit ImportError that
+            # the validator (Phase 3) can detect and flag.
+            del files[path]
+            skipped.append(path)
+            print(f"  ✗ Skipped {path} — dropped from repo (all recovery strategies exhausted)")
+
+        time.sleep(8)
+
+    if skipped:
+        print(f"\n[generator] Phase 2b summary — {len(skipped)} file(s) skipped:")
+        for p in skipped:
+            print(f"  ✗ {p}")
+        print("  → Phase 3 validator will catch any imports that reference these paths.")
+
+    return files, skipped
 
 
 # ── Phase 3: Validation pass ──────────────────────────────────────────────────
@@ -699,7 +826,6 @@ def generate_project(analysis: dict) -> dict:
     print("[generator] Phase 1: Planning file tree...")
     plan = plan_project(analysis, design)
     file_tree = plan.get("file_tree", [])
-    # FIX 1: Build the full file path list once and pass it to every generation call
     all_file_paths = [f["path"] for f in file_tree]
     print(f"[generator] Planned {len(file_tree)} files:")
     for f in file_tree:
@@ -726,7 +852,8 @@ def generate_project(analysis: dict) -> dict:
     readme = files.pop("README.md", f"# {plan['repo_name']}\n\n{plan['description']}\n")
 
     print("\n[generator] Phase 2b: Checking for stubs...")
-    files = _check_and_regenerate_stubs(
+    # _check_and_regenerate_stubs now returns (files, skipped_paths)
+    files, skipped_files = _check_and_regenerate_stubs(
         files, file_tree, plan, analysis, design, all_file_paths
     )
 
@@ -734,6 +861,8 @@ def generate_project(analysis: dict) -> dict:
     files, readme = validate_and_fix(files, readme, plan, design, analysis)
 
     print(f"\n[generator] ✓ {len(files)} files ready (+README)")
+    if skipped_files:
+        print(f"[generator] ⚠ {len(skipped_files)} file(s) were skipped due to unrecoverable stubs")
 
     return {
         "repo_name": plan["repo_name"],
@@ -744,4 +873,6 @@ def generate_project(analysis: dict) -> dict:
         "inspired_by": analysis["source_repo"],
         "inspired_by_url": analysis["source_url"],
         "category": analysis["category"],
+        # Pass skipped files through so main.py can log them
+        "skipped_files": skipped_files,
     }
