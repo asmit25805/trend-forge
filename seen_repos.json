@@ -1,21 +1,22 @@
 {
   "repos": [
-    "Forward-Future/loop-library",
-    "webc-site/math",
-    "StarTrail-org/PixelRAG",
-    "TestSprite/testsprite-cli",
-    "2aronS/Duel-Agents",
-    "XiaomiMiMo/MiMo-Code",
-    "yb2460/harness-anything",
     "Dong90/oh-my-taiyiforge",
     "agent0ai/dox",
-    "DietrichGebert/ponytail",
-    "vercel/eve",
+    "inkeep/open-knowledge",
     "withkynam/vibecode-pro-max-kit",
+    "2aronS/Duel-Agents",
+    "webc-site/math",
+    "omnigent-ai/omnigent",
     "sums001/Windows-Copilot-API",
+    "TestSprite/testsprite-cli",
+    "vercel/eve",
     "cobusgreyling/loop-engineering",
     "code-yeongyu/lazycodex",
-    "omnigent-ai/omnigent"
+    "Forward-Future/loop-library",
+    "XiaomiMiMo/MiMo-Code",
+    "yb2460/harness-anything",
+    "StarTrail-org/PixelRAG",
+    "DietrichGebert/ponytail"
   ],
-  "last_category_index": 4
+  "last_category_index": 5
 }

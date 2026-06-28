@@ -172,5 +172,28 @@
       "examples/basic-usage.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-06-28T07:44:38.248595",
+    "category": "llm",
+    "source_repo": "inkeep/open-knowledge",
+    "source_stars": 1381,
+    "generated_repo": "gitmind",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-06-28-gitmind",
+    "concept": "OpenKnowledge is a markdown\u2011first, AI\u2011native editor that treats the local file system as a version\u2011controlled knowledge base and exposes a Model Context Protocol (MCP) engine for agents to read/write it.",
+    "inspiration_angle": "Unlike typical note\u2011taking apps that rely on proprietary cloud storage, OpenKnowledge treats the local git repository as the sole source of truth and adds an agent\u2011agnostic MCP layer, enabling any LLM or custom agent to edit the same markdown files in real time. This combination of a pure\u2011file\u2011system backend, live backlink graph, and plug\u2011in skill system creates a unique \u201cLLM\u2011first second brain\u201d that is not simply a fork of Obsidian or Notion.",
+    "files_pushed": [
+      "Cargo.toml",
+      ".github/workflows/ci.yml",
+      "src/engine.rs",
+      "src/store.rs",
+      "src/mcp.rs",
+      "src/collab.rs",
+      "src/skill_registry.rs",
+      "tests/engine_test.rs",
+      "tests/store_test.rs",
+      "examples/basic_example.rs"
+    ],
+    "files_skipped": []
   }
 ]
