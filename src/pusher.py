@@ -249,6 +249,23 @@ def _set_topics(full_name: str, topics: list[str]):
     requests.put(url, headers=HEADERS, json={"names": clean})
 
 
+def _disable_actions(full_name: str):
+    """
+    Disable GitHub Actions on a repo entirely.
+    Prevents CI workflow failure notifications from flooding the owner's inbox
+    when generated code doesn't have dependencies set up correctly.
+    The CI yaml is still committed as documentation — it just won't run.
+    """
+    url = f"https://api.github.com/repos/{full_name}/actions/permissions"
+    r = requests.put(url, headers=HEADERS, json={"enabled": False})
+    if r.status_code in (204, 200):
+        print(f"[pusher] Actions disabled on {full_name} — no CI noise")
+    else:
+        # Non-fatal — if this fails the repo still gets pushed correctly,
+        # the owner just gets CI failure emails like before.
+        print(f"[pusher] ⚠ Could not disable Actions on {full_name} (status {r.status_code}) — continuing")
+
+
 # ── Git Tree API helpers ──────────────────────────────────────────────────────
 
 def _create_blob(full_name: str, content: str) -> str:
@@ -487,11 +504,18 @@ def push_standalone(project: dict) -> str:
         project.get("description", ""),
         project.get("topics", []),
     )
+    _disable_actions(full_name)
 
     repo_name = project["repo_name"]
     repo_url = f"https://github.com/{full_name}"
     readme = project.get("readme") or f"# {repo_name}\n"
     files: dict = project.get("files", {})
+
+    # Strip CI workflow files in standalone mode — generated code rarely has
+    # dependencies set up correctly, so CI always fails and spams the owner
+    # with failure emails on every push. The yaml is kept in monorepo mode
+    # since it lives in a subfolder and GitHub doesn't pick it up as a live workflow.
+    files = {p: c for p, c in files.items() if not p.startswith(".github/workflows/")}
 
     github_files  = {p: c for p, c in files.items() if p.startswith(".github/")}
     config_files  = {p: c for p, c in files.items() if _is_config(p)}
