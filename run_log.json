@@ -195,5 +195,30 @@
       "examples/basic_example.rs"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-06-29T08:50:51.531824",
+    "category": "agent",
+    "source_repo": "alchaincyf/fanbox",
+    "source_stars": 823,
+    "generated_repo": "codelink-pilot",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-06-29-codelink-pilot",
+    "concept": "A local desktop cockpit that merges a file explorer, rich preview pane, and an embedded terminal to run AI coding agents (Claude Code, Codex, etc.) while automatically tracking and displaying every file change the agent makes.",
+    "inspiration_angle": "Create a web\u2011only Progressive Web App version that runs the same file\u2011system logic inside a sandboxed IndexedDB/FS\u2011API layer (via BrowserFS) and uses a WebAssembly\u2011compiled PTY emulator instead of node\u2011pty. This would let users access the \u201ccockpit\u201d from any browser, enable remote collaboration, and remove the Electron dependency while preserving the core agent\u2011file\u2011UI loop.",
+    "files_pushed": [
+      "package.json",
+      ".github/workflows/ci.yml",
+      "src/types.ts",
+      "src/core/virtualFS.ts",
+      "src/core/syncCoordinator.ts",
+      "src/agents/adapter.ts",
+      "src/ui/terminal.tsx",
+      "src/ui/preview.tsx",
+      "tests/agentAdapter.test.ts",
+      "examples/basic-demo.ts"
+    ],
+    "files_skipped": [
+      "tests/virtualFS.test.ts"
+    ]
   }
 ]
