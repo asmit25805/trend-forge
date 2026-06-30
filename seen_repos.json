@@ -1,23 +1,24 @@
 {
   "repos": [
-    "webc-site/math",
-    "StarTrail-org/PixelRAG",
-    "alchaincyf/fanbox",
-    "cobusgreyling/loop-engineering",
-    "TestSprite/testsprite-cli",
-    "code-yeongyu/lazycodex",
-    "inkeep/open-knowledge",
-    "withkynam/vibecode-pro-max-kit",
+    "Guardinary/web2gem",
     "vercel/eve",
-    "yb2460/harness-anything",
+    "code-yeongyu/lazycodex",
     "DietrichGebert/ponytail",
-    "agent0ai/dox",
-    "Dong90/oh-my-taiyiforge",
+    "omnigent-ai/omnigent",
     "sums001/Windows-Copilot-API",
-    "2aronS/Duel-Agents",
+    "alchaincyf/fanbox",
+    "StarTrail-org/PixelRAG",
+    "yb2460/harness-anything",
     "XiaomiMiMo/MiMo-Code",
+    "TestSprite/testsprite-cli",
+    "webc-site/math",
+    "Dong90/oh-my-taiyiforge",
+    "2aronS/Duel-Agents",
+    "withkynam/vibecode-pro-max-kit",
+    "agent0ai/dox",
     "Forward-Future/loop-library",
-    "omnigent-ai/omnigent"
+    "inkeep/open-knowledge",
+    "cobusgreyling/loop-engineering"
   ],
-  "last_category_index": 6
+  "last_category_index": 7
 }

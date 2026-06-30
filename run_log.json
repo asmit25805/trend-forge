@@ -220,5 +220,30 @@
     "files_skipped": [
       "tests/virtualFS.test.ts"
     ]
+  },
+  {
+    "date": "2026-06-30T07:44:19.511118",
+    "category": "api",
+    "source_repo": "Guardinary/web2gem",
+    "source_stars": 106,
+    "generated_repo": "gemini-bridge",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-06-30-gemini-bridge",
+    "concept": "A TypeScript gateway that exposes OpenAI\u2011compatible and Google\u2011compatible HTTP endpoints and translates them into Gemini Web requests, runnable as a single Cloudflare Worker file or a Docker\u2011hosted Node service.",
+    "inspiration_angle": "Unlike generic API proxies, this project bundles a zero\u2011cost Gemini Web backend into a single Cloudflare Worker file that also runs as a Docker service, delivering both OpenAI and Gemini compatibility in one deployable artifact and exposing a unified streaming and image generation interface.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/types.ts",
+      "src/router.ts",
+      "src/adapter/gemini.ts",
+      "src/transport/fetch.ts",
+      "src/transport/socket.ts",
+      "src/stream/processor.ts",
+      "src/server.ts",
+      "test/router.test.ts",
+      "test/adapter.test.ts",
+      "examples/basic.ts"
+    ],
+    "files_skipped": []
   }
 ]
