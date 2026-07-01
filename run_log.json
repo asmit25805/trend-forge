@@ -245,5 +245,28 @@
       "examples/basic.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-01T08:05:30.956722",
+    "category": "ai",
+    "source_repo": "superloglabs/superlog",
+    "source_stars": 959,
+    "generated_repo": "cogni-tune",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-01-cogni-tune",
+    "concept": "A TypeScript\u2011based observability platform that ingests telemetry, groups noisy signals into incidents, and exposes AI\u2011driven agent tools (via MCP) to self\u2011heal software.",
+    "inspiration_angle": "Unlike traditional alerting platforms, Superlog treats LLM agents as first\u2011class citizens that can read/write system configuration (issue filters, agent memories) via a typed RPC protocol, turning observability data into actionable AI\u2011driven remediation steps rather than just notifications.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "Cargo.toml",
+      "src/engine.rs",
+      "src/mcp/server.rs",
+      "src/services/telemetry.rs",
+      "src/services/config_store.rs",
+      "src/auth/middleware.rs",
+      "tests/telemetry_test.rs",
+      "tests/config_store_test.rs",
+      "examples/basic.rs"
+    ],
+    "files_skipped": []
   }
 ]
