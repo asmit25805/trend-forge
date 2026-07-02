@@ -268,5 +268,30 @@
       "examples/basic.rs"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-02T07:02:27.155884",
+    "category": "developer-tools",
+    "source_repo": "raiyanyahya/recall",
+    "source_stars": 646,
+    "generated_repo": "session-scribe",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-02-session-scribe",
+    "concept": "Recall captures Claude Code session transcripts, redacts them, and builds a local extractive summary (context.md) to provide durable, offline project memory for future sessions.",
+    "inspiration_angle": "Recall uniquely combines a Claude Code plugin with a fully offline, extractive TextRank summarizer to provide durable memory without any external vector store or API call, positioning it as a privacy\u2011first alternative to typical LLM memory extensions that rely on cloud services.",
+    "files_pushed": [
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/redaction/redactor.py",
+      "src/summarization/summarizer.py",
+      "src/indexing/bm25.py",
+      "src/cli/commands.py",
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "tests/test_engine.py",
+      "examples/example_usage.py"
+    ],
+    "files_skipped": [
+      "tests/test_redactor.py"
+    ]
   }
 ]
