@@ -293,5 +293,30 @@
     "files_skipped": [
       "tests/test_redactor.py"
     ]
+  },
+  {
+    "date": "2026-07-03T06:58:07.702585",
+    "category": "web",
+    "source_repo": "Zayfern/artisanal-streamlit-brew-metrics",
+    "source_stars": 151,
+    "generated_repo": "brew-ops-dashboard",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-03-brew-ops-dashboard",
+    "concept": "A Streamlit\u2011based web dashboard that forecasts coffee\u2011shop footfall and optimizes inventory using time\u2011series models and external data sources.",
+    "inspiration_angle": "Unlike typical Power\u202fBI or Tableau coffee\u2011shop dashboards that are retrospective, this project fuses a predictive time\u2011series engine with a lightweight HTML\u2011first deployment model, creating a \u201cplug\u2011and\u2011play\u201d forecasting barista that can be launched from any static\u2011site host.",
+    "files_pushed": [
+      "requirements.txt",
+      ".github/workflows/ci.yml",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/ui/app.py",
+      "src/ingest/collector.py",
+      "src/processor/telemetry.py",
+      "tests/test_predictor.py",
+      "examples/run_demo.py"
+    ],
+    "files_skipped": [
+      "src/cli/main.py",
+      "tests/test_ingest.py"
+    ]
   }
 ]
