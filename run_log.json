@@ -318,5 +318,29 @@
       "src/cli/main.py",
       "tests/test_ingest.py"
     ]
+  },
+  {
+    "date": "2026-07-04T06:41:57.476999",
+    "category": "cli",
+    "source_repo": "tigicion/dao-code",
+    "source_stars": 1436,
+    "generated_repo": "pipeline-pilot",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-04-pipeline-pilot",
+    "concept": "A terminal\u2011native AI coding assistant that streams reasoning, runs tool calls, and self\u2011corrects using DeepSeek\u2011V4 with a 1\u202fM token context window.",
+    "inspiration_angle": "While inspired by Claude Code, Dao Code diverges by turning DeepSeek\u2019s cheap cache pricing into a core architectural pillar: it treats the LLM prompt as a stable byte\u2011prefix, builds a memory system that reuses that cache across sessions, and adds a sub\u2011agent task\u2011dispatch mechanism that isolates work without inflating context. This cache\u2011first, sub\u2011agent\u2011enabled design makes it a distinct project rather than a simple fork.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/agent/subagent.py",
+      "src/memory/store.py",
+      "src/reflector/unified.py",
+      "src/tool/engine.py",
+      "tests/test_session.py",
+      "tests/test_memory.py",
+      "examples/example_task.py"
+    ],
+    "files_skipped": []
   }
 ]
