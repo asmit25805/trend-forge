@@ -342,5 +342,29 @@
       "examples/example_task.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-05T07:01:17.149373",
+    "category": "automation",
+    "source_repo": "Forward-Future/loopy",
+    "source_stars": 2431,
+    "generated_repo": "chainforge",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-05-chainforge",
+    "concept": "A serverless catalog service that stores, versions, and serves reusable AI\u2011agent loop definitions, with an optional installable skill that guides agents through discovery, auditing, execution, and publishing of those loops.",
+    "inspiration_angle": "Unlike generic prompt libraries, Loopy couples a public, versioned loop catalog with an installable skill that turns any LLM\u2011agent into a self\u2011service workflow manager\u2014effectively giving agents the ability to browse, vote on, and run loops without external orchestration, a unique blend of catalog and agent\u2011side automation.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/types.ts",
+      "src/catalog/store.ts",
+      "src/executor/engine.ts",
+      "src/auth/oauth.ts",
+      "src/rateLimiter.ts",
+      "src/cli/main.ts",
+      "tests/catalog.test.ts",
+      "tests/executor.test.ts",
+      "examples/publish-example.md"
+    ],
+    "files_skipped": []
   }
 ]
