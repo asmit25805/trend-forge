@@ -366,5 +366,29 @@
       "examples/publish-example.md"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-06T08:12:19.600796",
+    "category": "llm",
+    "source_repo": "shy3130/tickflow-stock-panel",
+    "source_stars": 1593,
+    "generated_repo": "ai-quant-assembler",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-06-ai-quant-assembler",
+    "concept": "A self\u2011hosted, zero\u2011ops quantitative workstation for China A\u2011share markets that integrates stock selection, real\u2011time monitoring, and backtesting, driven by TickFlow data and optional LLM\u2011generated strategies.",
+    "inspiration_angle": "A unique blend of AI\u2011augmented strategy generation and a fully self\u2011hosted, plugin\u2011ready quantitative pipeline focused exclusively on the Chinese A\u2011share market, offering a turnkey Docker deployment that abstracts away data\u2011provider quirks and provides a unified backtesting and monitoring experience\u2014distinct from generic quant platforms that target global markets or rely on external SaaS backends.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/plugins/manager.py",
+      "src/ai/strategy_generator.py",
+      "src/jobs/scheduler.py",
+      "src/api/router.py",
+      "tests/test_engine.py",
+      "tests/test_scheduler.py",
+      "examples/run_pipeline.py"
+    ],
+    "files_skipped": []
   }
 ]
