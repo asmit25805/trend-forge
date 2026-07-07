@@ -390,5 +390,30 @@
       "examples/run_pipeline.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-07T07:32:32.676380",
+    "category": "agent",
+    "source_repo": "larlarua/AutoCVE",
+    "source_stars": 1056,
+    "generated_repo": "codeguardian",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-07-codeguardian",
+    "concept": "An AI\u2011driven platform that orchestrates multiple agents to automatically audit source code, discover vulnerabilities, verify them, and generate ready\u2011to\u2011submit CVE reports.",
+    "inspiration_angle": "Unlike typical SAST platforms, AutoCVE fuses LLM\u2011driven reasoning agents with classic scanning tools to not only find bugs but also autonomously verify exploitability and draft CVE entries, turning vulnerability discovery into a self\u2011contained, AI\u2011augmented product rather than a collection of loosely coupled scanners.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/orchestrator.py",
+      "src/agents/llm_agent.py",
+      "src/persistence/models.py",
+      "src/api/router.py",
+      "src/report/generator.py",
+      "tests/test_orchestrator.py",
+      "tests/test_report_generator.py"
+    ],
+    "files_skipped": [
+      "examples/run_demo.py"
+    ]
   }
 ]
