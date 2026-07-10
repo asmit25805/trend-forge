@@ -462,5 +462,27 @@
       "examples/example_skill.md"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-10T07:27:56.324476",
+    "category": "cli",
+    "source_repo": "synthetic-sciences/openscience",
+    "source_stars": 1987,
+    "generated_repo": "labbench-cli",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-10-labbench-cli",
+    "concept": "A CLI\u2011driven AI workbench that orchestrates autonomous research agents and plug\u2011in skills to run the full scientific loop from literature review to write\u2011up.",
+    "inspiration_angle": "Unlike generic LLM assistants, OpenScience embeds a full research lifecycle engine with domain\u2011specific agents (biology, physics, ML) and a curated skill marketplace, turning the CLI into a programmable laboratory bench rather than just a chat interface.",
+    "files_pushed": [
+      "requirements.txt",
+      ".github/workflows/ci.yml",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/core/plugin_manager.py",
+      "src/cli/main.py",
+      "tests/test_engine.py",
+      "tests/test_plugin_manager.py",
+      "examples/example_experiment.yaml"
+    ],
+    "files_skipped": []
   }
 ]
