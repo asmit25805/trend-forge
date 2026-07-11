@@ -484,5 +484,28 @@
       "examples/example_experiment.yaml"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-11T06:09:02.777814",
+    "category": "automation",
+    "source_repo": "oomol-lab/open-connector",
+    "source_stars": 1267,
+    "generated_repo": "flowbridge",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-11-flowbridge",
+    "concept": "OpenConnector is a TypeScript\u2011based gateway that unifies authentication and execution of 1,000+ SaaS provider APIs behind a single runtime exposing MCP, HTTP, and OpenAPI interfaces.",
+    "inspiration_angle": "OpenConnector blends a traditional API\u2011gateway\u2019s credential vault with an AI\u2011agent\u2011centric MCP interface, turning the SaaS integration problem into a plug\u2011and\u2011play catalog that can be self\u2011hosted or run on edge platforms\u2014an approach that goes beyond generic API management by explicitly supporting LLM\u2011compatible action contracts and agent\u2011focused tooling.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/plugins/loader.py",
+      "src/execution/executor.py",
+      "src/vault/credential_store.py",
+      "tests/test_engine.py",
+      "tests/test_executor.py",
+      "examples/example_pipeline.yaml"
+    ],
+    "files_skipped": []
   }
 ]
