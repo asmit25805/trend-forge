@@ -507,5 +507,28 @@
       "examples/example_pipeline.yaml"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-12T06:28:58.692473",
+    "category": "llm",
+    "source_repo": "jmerelnyc/Talos",
+    "source_stars": 977,
+    "generated_repo": "gputide",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-12-gputide",
+    "concept": "A Python CLI that turns a local GPU (via Ollama) into a shared inference worker for the Talos network, exposing an OpenAI\u2011compatible chat/completions API over WebSocket.",
+    "inspiration_angle": "Unlike generic cloud GPU rentals, Talos worker turns a personal GPU into a decentralized inference node that speaks the universal OpenAI chat/completions API, enabling any existing client to consume shared GPU resources without code changes\u2014creating a marketplace for on\u2011demand, community\u2011sourced LLM inference.",
+    "files_pushed": [
+      "src/core/engine.py",
+      "src/auth/auth.py",
+      "src/network/ws.py",
+      "src/metrics/collector.py",
+      "src/core/models.py",
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "tests/test_engine.py",
+      "tests/test_auth.py",
+      "examples/example_client.py"
+    ],
+    "files_skipped": []
   }
 ]
