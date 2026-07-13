@@ -530,5 +530,32 @@
       "examples/example_client.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-13T06:48:16.666245",
+    "category": "agent",
+    "source_repo": "op7418/guizang-material-illustration",
+    "source_stars": 604,
+    "generated_repo": "guizang-visualizer",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-13-guizang-visualizer",
+    "concept": "A skill for Claude\u202fCode / Codex agents that automatically creates Chinese\u2011labeled, Guizang\u2011style material illustrations (explanatory diagrams, chart beautifications, and reference\u2011informed visuals) from raw text, screenshots, or data.",
+    "inspiration_angle": "Unlike generic AI image generators, this project fuses a disciplined, reference\u2011driven workflow with a strict Chinese\u2011labeling and visual\u2011style regime, turning a raw concept or chart into a ready\u2011to\u2011publish Guizang material illustration\u2014all orchestrated by an LLM agent rather than manual prompt engineering.",
+    "files_pushed": [
+      "requirements.txt",
+      ".github/workflows/ci.yml",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/validator.py",
+      "src/agents/__init__.py",
+      "src/tools/__init__.py",
+      "src/memory/__init__.py",
+      "src/runtime/__init__.py",
+      "tests/test_engine.py",
+      "examples/example_usage.py"
+    ],
+    "files_skipped": [
+      "src/prompt_builder.py",
+      "tests/test_prompt_builder.py"
+    ]
   }
 ]
