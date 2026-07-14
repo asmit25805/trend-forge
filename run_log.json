@@ -557,5 +557,28 @@
       "src/prompt_builder.py",
       "tests/test_prompt_builder.py"
     ]
+  },
+  {
+    "date": "2026-07-14T06:04:44.102826",
+    "category": "api",
+    "source_repo": "kao8386/komga-sync-lite",
+    "source_stars": 151,
+    "generated_repo": "graph-archiver-middleware",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-14-graph-archiver-middleware",
+    "concept": "A client\u2011side web tool that orchestrates archival workflows by applying rule\u2011based classification and graph\u2011linked retrieval to media files.",
+    "inspiration_angle": "Transforms a typical downloader into a self\u2011orchestrating archival middleware that treats each file as a node in a knowledge graph, enabling rule\u2011driven, on\u2011demand delivery rather than static bulk downloads.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/graph/graph.py",
+      "src/downloader/http_client.py",
+      "src/api/v1.py",
+      "tests/test_engine.py",
+      "tests/test_graph.py",
+      "examples/example_usage.py"
+    ],
+    "files_skipped": []
   }
 ]
