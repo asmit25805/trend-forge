@@ -580,5 +580,29 @@
       "examples/example_usage.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-15T06:08:17.248527",
+    "category": "ai",
+    "source_repo": "elder-plinius/T3MP3ST",
+    "source_stars": 4730,
+    "generated_repo": "huntforge",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-15-huntforge",
+    "concept": "T3MP3ST is a TypeScript\u2011based orchestration framework that turns any LLM coding agent into an autonomous red\u2011team hunter by chaining reconnaissance, exploit generation, and reporting steps.",
+    "inspiration_angle": "Unlike generic AI\u2011code\u2011assistant tools, T3MP3ST treats the LLM as the brain of a self\u2011contained offensive platform, providing a modular \u201carsenal\u201d of exploit primitives, a reproducible CVE\u2011hunt benchmark, and full offline operation\u2014creating a distinct ecosystem for AI\u2011driven red\u2011team automation rather than a simple code\u2011completion add\u2011on.",
+    "files_pushed": [
+      "src/core/engine.py",
+      "src/plugins/llm_provider.py",
+      "src/modules/recon.py",
+      "src/modules/exploit.py",
+      "src/reporting/report.py",
+      "src/core/models.py",
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "tests/test_engine.py",
+      "tests/test_recon.py",
+      "examples/example_hunt.yaml"
+    ],
+    "files_skipped": []
   }
 ]
