@@ -604,5 +604,29 @@
       "examples/example_hunt.yaml"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-16T06:12:20.128870",
+    "category": "developer-tools",
+    "source_repo": "mereyabdenbekuly-ctrl/clodex-ide",
+    "source_stars": 813,
+    "generated_repo": "trustguard-code",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-16-trustguard-code",
+    "concept": "A TypeScript\u2011based local\u2011first IDE runtime that provides a secure, policy\u2011driven file system abstraction with fast search (grep/glob) backed by ripgrep and graceful Node.js fallbacks.",
+    "inspiration_angle": "Unlike typical IDE extensions that trust model output, Clodex treats every AI\u2011generated change as untrusted input and enforces explicit, verifiable policies at the runtime level, creating a truly zero\u2011trust, locally hosted development platform for autonomous software creation.",
+    "files_pushed": [
+      "package.json",
+      ".github/workflows/ci.yml",
+      "src/types.ts",
+      "src/core/policyEngine.ts",
+      "src/fs/fileSystemGuard.ts",
+      "src/search/searchEngine.ts",
+      "src/ai/aiConnector.ts",
+      "tests/policyEngine.test.ts",
+      "tests/fileSystemGuard.test.ts",
+      "examples/example.ts",
+      "bin/trustguard.ts"
+    ],
+    "files_skipped": []
   }
 ]
