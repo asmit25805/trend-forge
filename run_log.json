@@ -628,5 +628,30 @@
       "bin/trustguard.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-17T06:11:50.129760",
+    "category": "cli",
+    "source_repo": "514-labs/dnsglobe",
+    "source_stars": 884,
+    "generated_repo": "dnswatch",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-17-dnswatch",
+    "concept": "A terminal UI that concurrently queries many public DNS resolvers and visualises DNS record propagation on a world map or animated globe.",
+    "inspiration_angle": "Create a TUI that not only checks DNS propagation but also continuously monitors DNSSEC validation status and DNS\u2011over\u2011HTTPS (DoH) endpoint health, displaying live latency graphs, validation failure counters, and exporting metrics to Prometheus for integration with existing monitoring pipelines.",
+    "files_pushed": [
+      "Cargo.toml",
+      ".github/workflows/ci.yml",
+      "src/engine.rs",
+      "src/probe.rs",
+      "src/metrics.rs",
+      "src/ui.rs",
+      "src/app_state.rs",
+      "cmd/dnswatch.rs",
+      "tests/engine_test.rs",
+      "examples/basic.rs"
+    ],
+    "files_skipped": [
+      "tests/probe_test.rs"
+    ]
   }
 ]
