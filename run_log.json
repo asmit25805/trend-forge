@@ -653,5 +653,29 @@
     "files_skipped": [
       "tests/probe_test.rs"
     ]
+  },
+  {
+    "date": "2026-07-18T05:58:56.023398",
+    "category": "automation",
+    "source_repo": "linxidnju/OpenTag",
+    "source_stars": 451,
+    "generated_repo": "polytag",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-18-polytag",
+    "concept": "A Slack\u2011native gateway that routes thread\u2011level AI agent requests to pluggable runtimes with policy, approvals, shared team knowledge, and audit logging.",
+    "inspiration_angle": "Extend the channel\u2011native model to a multi\u2011channel orchestration platform that supports Discord, Microsoft Teams, and Mattermost, using the same runtime\u2011adapter and policy framework to provide a unified AI\u2011agent gateway across heterogeneous collaboration tools.",
+    "files_pushed": [
+      "package.json",
+      ".github/workflows/ci.yml",
+      "src/types.ts",
+      "src/gateway/router.ts",
+      "src/channel/discordAdapter.ts",
+      "src/runtime/runtimeAdapter.ts",
+      "src/engine/engine.ts",
+      "src/store/knowledgeStore.ts",
+      "test/engine.test.ts",
+      "test/policyEngine.test.ts",
+      "examples/basicExample.ts"
+    ],
+    "files_skipped": []
   }
 ]
