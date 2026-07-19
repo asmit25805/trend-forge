@@ -677,5 +677,29 @@
       "examples/basicExample.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-19T06:24:27.615978",
+    "category": "llm",
+    "source_repo": "HUANGCHIHHUNGLeo/claude-real-video",
+    "source_stars": 1734,
+    "generated_repo": "vid2prompt",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-19-vid2prompt",
+    "concept": "A Python CLI that converts any video into a minimal set of scene\u2011aware keyframes with precise timestamps and an optional Whisper transcription, all processed locally.",
+    "inspiration_angle": "Unlike generic video\u2011to\u2011image utilities, crv couples scene\u2011aware extraction with LLM\u2011ready metadata (timestamps, transcripts) and a turnkey Claude Code skill, turning a raw video into a plug\u2011and\u2011play visual prompt for any LLM\u2014effectively creating a \u201cvideo\u2011aware LLM front\u2011end\u201d rather than just a preprocessing script.",
+    "files_pushed": [
+      "src/core/engine.py",
+      "src/core/models.py",
+      "src/dedup/deduplicator.py",
+      "src/prompt/generator.py",
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "tests/test_engine.py",
+      "tests/test_prompt.py",
+      "examples/run_example.py"
+    ],
+    "files_skipped": [
+      "src/detectors/scene.py"
+    ]
   }
 ]
