@@ -701,5 +701,30 @@
     "files_skipped": [
       "src/detectors/scene.py"
     ]
+  },
+  {
+    "date": "2026-07-20T06:39:33.612572",
+    "category": "agent",
+    "source_repo": "deer-flow/llm-space",
+    "source_stars": 1099,
+    "generated_repo": "agent-fabric",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-20-agent-fabric",
+    "concept": "A desktop IDE that lets developers prototype, version, trace, debug, and evaluate LLM agents locally with built\u2011in tooling and optional cloud\u2011ready managed agents.",
+    "inspiration_angle": "Unlike generic LLM playgrounds, LLM Space treats the agent as a first\u2011class project artifact, versioning prompts, tools, and model configs alongside source code, and provides a built\u2011in CDP debugger that can introspect the very desktop renderer used to display the agent. This tight integration of IDE, runtime trace, and renderer debugging creates a self\u2011contained development loop that no other LLM tooling currently offers.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/types.ts",
+      "src/core/engine.ts",
+      "src/core/skillRegistry.ts",
+      "src/ui/traceSidebar.tsx",
+      "src/rpc/channel.ts",
+      "src/analytics/index.ts",
+      "test/engine.test.ts",
+      "test/skillRegistry.test.ts",
+      "examples/simple-agent.ts",
+      "src/core/traceStore.ts"
+    ],
+    "files_skipped": []
   }
 ]
