@@ -726,5 +726,29 @@
       "src/core/traceStore.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-21T06:24:04.326644",
+    "category": "api",
+    "source_repo": "nivanel/Heliotrope-Relay",
+    "source_stars": 151,
+    "generated_repo": "prismatica-relay",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-21-prismatica-relay",
+    "concept": "A lightweight web front\u2011end that aggregates Hitomi.la metadata via an asynchronous Sanic\u2011based REST API.",
+    "inspiration_angle": "Instead of merely mirroring Heliotrope\u2019s endpoints, Prismatica refracts queries by splitting them into parallel sub\u2011requests and recombining results on the client, turning a simple mirror into a distributed, low\u2011latency metadata refinery.",
+    "files_pushed": [
+      "src/core/splitter.py",
+      "src/core/aggregator.py",
+      "src/api/routes.py",
+      "src/core/fetcher.py",
+      "src/middleware/error_handler.py",
+      "src/core/models.py",
+      "requirements.txt",
+      ".github/workflows/ci.yml",
+      "tests/test_splitter.py",
+      "tests/test_aggregator.py",
+      "examples/example_client.py"
+    ],
+    "files_skipped": []
   }
 ]
