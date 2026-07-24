@@ -797,5 +797,30 @@
       "examples/example_usage.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-24T06:20:39.393229",
+    "category": "web",
+    "source_repo": "DexZane/awesome-web-prompts",
+    "source_stars": 176,
+    "generated_repo": "prompt-lab",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-24-prompt-lab",
+    "concept": "A metadata\u2011driven repository of AI prompts and design specifications that generate complete React\u202f+\u202fTailwind web page code.",
+    "inspiration_angle": "Build an interactive web playground that loads any prompt\u2019s meta.json, renders the preview image, and lets users edit the prompt markdown live; the app would then call an AI service (e.g., Claude or OpenAI) to generate the code on\u2011the\u2011fly and display a live preview, turning the static prompt library into a real\u2011time prototyping environment.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/types.ts",
+      "src/store/promptStore.ts",
+      "src/ai/aiClient.ts",
+      "src/engine/playgroundEngine.ts",
+      "src/compiler/sandboxCompiler.ts",
+      "src/cli/main.ts",
+      "src/plugins/examplePlugin.ts",
+      "tests/promptStore.test.ts",
+      "tests/playgroundEngine.test.ts",
+      "examples/basic-example.md"
+    ],
+    "files_skipped": []
   }
 ]
