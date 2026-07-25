@@ -822,5 +822,29 @@
       "examples/basic-example.md"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-25T06:12:51.701268",
+    "category": "cli",
+    "source_repo": "GaoSSR/best-claude-hud",
+    "source_stars": 941,
+    "generated_repo": "ai-metrics-hud",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-25-ai-metrics-hud",
+    "concept": "A Rust\u2011compiled command\u2011line tool that renders a concise Claude\u202fCode statusline from JSON data streamed via stdin.",
+    "inspiration_angle": "Unlike typical JavaScript\u2011based statusline plugins, this project delivers a minimal, high\u2011performance HUD written in Rust and packaged as a native binary, providing cross\u2011platform consistency and the ability to parse Claude\u2011specific telemetry that other generic statusline tools cannot.",
+    "files_pushed": [
+      "Cargo.toml",
+      ".github/workflows/ci.yml",
+      "src/main.rs",
+      "src/config/loader.rs",
+      "src/core/parser.rs",
+      "src/core/renderer.rs",
+      "src/plugin/mod.rs",
+      "cmd/monitor.rs",
+      "tests/config_loader_test.rs",
+      "tests/telemetry_parser_test.rs",
+      "examples/basic_usage.rs"
+    ],
+    "files_skipped": []
   }
 ]
