@@ -846,5 +846,28 @@
       "examples/basic_usage.rs"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-26T06:31:17.162829",
+    "category": "automation",
+    "source_repo": "tiliondev/fortress",
+    "source_stars": 407,
+    "generated_repo": "chameleon-browser",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-26-chameleon-browser",
+    "concept": "A patched Chromium binary that generates a coherent, native fingerprint per launch and exposes it via CDP as a drop\u2011in replacement for Playwright/Puppeteer.",
+    "inspiration_angle": "Instead of layering JavaScript shims on top of a stock browser, Fortress embeds a full\u2011stack persona generator directly into Chromium\u2019s C++ source and ships it as a drop\u2011in binary, turning the browser itself into the stealth layer rather than an add\u2011on.",
+    "files_pushed": [
+      "Cargo.toml",
+      ".github/workflows/ci.yml",
+      "src/engine/persona_engine.rs",
+      "src/launcher/browser_launcher.rs",
+      "src/session/session_manager.rs",
+      "src/triggers/on_start.rs",
+      "src/integrations/grpc_server.rs",
+      "tests/unit_test.rs",
+      "tests/integration_test.rs",
+      "examples/basic_usage.rs"
+    ],
+    "files_skipped": []
   }
 ]
