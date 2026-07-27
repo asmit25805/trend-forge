@@ -869,5 +869,29 @@
       "examples/basic_usage.rs"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-27T06:58:21.972721",
+    "category": "llm",
+    "source_repo": "Sahir619/fable-method",
+    "source_stars": 1933,
+    "generated_repo": "tracecraft",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-27-tracecraft",
+    "concept": "A reproducible LLM\u2011agent workflow framework that encodes Claude\u202fFable\u202f5\u2019s \u201cthink\u2011act\u2011prove\u2011grow\u201d method as a set of explicit skills and validates them with a systematic trap\u2011based evaluation harness.",
+    "inspiration_angle": "Instead of merely providing a prompt template, the project treats the Fable workflow as a first\u2011class, versioned skill library that can be loaded as a Claude plugin and rigorously validated against a self\u2011generated, adversarial benchmark\u2014turning a proprietary model\u2019s internal process into an open, reproducible methodology for any LLM.",
+    "files_pushed": [
+      "requirements.txt",
+      ".github/workflows/ci.yml",
+      "src/core/engine.py",
+      "src/skills/registry.py",
+      "src/validation/trace.py",
+      "src/benchmark/runner.py",
+      "tests/test_engine.py",
+      "tests/test_registry.py",
+      "examples/example_usage.py"
+    ],
+    "files_skipped": [
+      "src/core/models.py"
+    ]
   }
 ]
