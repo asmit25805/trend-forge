@@ -893,5 +893,29 @@
     "files_skipped": [
       "src/core/models.py"
     ]
+  },
+  {
+    "date": "2026-07-28T06:20:24.313931",
+    "category": "agent",
+    "source_repo": "aipoch/open-science",
+    "source_stars": 934,
+    "generated_repo": "ai-research-lab",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-28-ai-research-lab",
+    "concept": "A desktop\u2011first, model\u2011agnostic AI workbench that lets researchers describe tasks in natural language and have an autonomous agent plan, execute, and record multi\u2011step analyses with full artifact traceability.",
+    "inspiration_angle": "Unlike existing AI notebooks or wrappers around proprietary services, this project fuses a model\u2011agnostic agent core with a sandboxed compute kernel and a durable artifact store, delivering a truly self\u2011hosted, reproducible research platform that can be extended to any LLM provider without vendor lock\u2011in.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/core/models.py",
+      "src/core/agentEngine.ts",
+      "src/providers/providerAdapter.ts",
+      "src/kernel/kernelManager.ts",
+      "src/memory/memoryStore.ts",
+      "test/agentEngine.test.ts",
+      "test/providerAdapter.test.ts",
+      "examples/basic-usage.ts",
+      "src/core/models.ts"
+    ],
+    "files_skipped": []
   }
 ]
