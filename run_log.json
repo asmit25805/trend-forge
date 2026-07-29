@@ -917,5 +917,30 @@
       "src/core/models.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-29T06:26:30.968225",
+    "category": "api",
+    "source_repo": "Alinebm17/finance-api-tool",
+    "source_stars": 139,
+    "generated_repo": "multi-index-finance-collector",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-29-multi-index-finance-collector",
+    "concept": "A TypeScript CLI that pulls S&P\u202f500 ticker symbols and bulk\u2011downloads quarterly financial statements and ESG scores from multiple public APIs, outputting the results as CSV files.",
+    "inspiration_angle": "Extend the CLI into a multi\u2011index data collector (e.g., NASDAQ\u2011100, FTSE\u202f100) with a pluggable provider architecture, add a local SQLite cache for incremental updates, and expose a lightweight GraphQL endpoint so downstream tools can query specific companies, periods, or metric types on demand rather than processing whole CSV files.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/types.ts",
+      "src/core/providerRegistry.ts",
+      "src/core/dataFetcher.ts",
+      "src/server/graphqlServer.ts",
+      "src/cli/engine.ts",
+      "tests/providerRegistry.test.ts",
+      "tests/dataFetcher.test.ts",
+      "examples/basic-usage.md"
+    ],
+    "files_skipped": [
+      "src/core/cacheManager.ts"
+    ]
   }
 ]
