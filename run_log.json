@@ -966,5 +966,29 @@
       "examples/basic.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-07-31T06:39:26.384214",
+    "category": "developer-tools",
+    "source_repo": "Optim-Agent/optim-agent",
+    "source_stars": 637,
+    "generated_repo": "prompt-optimus",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-07-31-prompt-optimus",
+    "concept": "An agent\u2011driven hyperparameter optimizer that lets LLMs propose, validate, and log configuration trials for any Python\u2011exposed system.",
+    "inspiration_angle": "Unlike generic AutoML frameworks, optim\u2011agent treats the LLM as a first\u2011class participant that can read user code, reason about parameter semantics, and generate contextual suggestions, while simultaneously offering a marketplace\u2011ready plugin wrapper that lets the same LLM\u2011driven optimizer be installed as a Claude Code skill or a Codex skill without duplicating workflow logic.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/plugins/registry.py",
+      "src/cli/main.py",
+      "src/reporters/logger.py",
+      "tests/test_engine.py",
+      "tests/test_registry.py",
+      "examples/example_usage.py",
+      "bin/prompt_optimus"
+    ],
+    "files_skipped": []
   }
 ]
