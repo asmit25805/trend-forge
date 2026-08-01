@@ -990,5 +990,29 @@
       "bin/prompt_optimus"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-01T06:22:26.404542",
+    "category": "web",
+    "source_repo": "zenbu-labs/terminal-browser",
+    "source_stars": 531,
+    "generated_repo": "kitty-browser-proxy",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-01-kitty-browser-proxy",
+    "concept": "A terminal\u2011native web browser that renders Chromium off\u2011screen frames as Kitty graphics protocol pixels and forwards terminal input as synthetic Chromium events.",
+    "inspiration_angle": "Create a \"headless\u2011plus\u2011graphics\" browser that streams Chromium frames over a WebSocket to any terminal emulator supporting the Kitty protocol, enabling web rendering in environments like Docker containers, CI pipelines, or headless CI agents where no X server exists.",
+    "files_pushed": [
+      "package.json",
+      ".github/workflows/ci.yml",
+      "src/types.ts",
+      "src/engine/browserEngine.ts",
+      "src/stream/frameStreamer.ts",
+      "src/manager/sessionManager.ts",
+      "src/client/terminalRenderer.ts",
+      "src/cli/cli.ts",
+      "tests/engine.test.ts",
+      "tests/streamer.test.ts",
+      "examples/basic-example.ts"
+    ],
+    "files_skipped": []
   }
 ]
