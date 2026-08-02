@@ -1014,5 +1014,29 @@
       "examples/basic-example.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-02T06:28:24.258867",
+    "category": "cli",
+    "source_repo": "openai/codex-security",
+    "source_stars": 8025,
+    "generated_repo": "codeguard-diff",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-02-codeguard-diff",
+    "concept": "A CLI and TypeScript SDK that leverages OpenAI Codex to scan codebases for security vulnerabilities, store results in a SQLite workbench, and provide remediation workflows.",
+    "inspiration_angle": "A unified security platform that fuses LLM\u2011driven code analysis with a lightweight, SQLite\u2011backed workbench and container\u2011aware runtime adjustments, enabling incremental, diff\u2011driven remediation while respecting host security policies\u2014a novel blend of AI, local state management, and OS\u2011level sandboxing.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/cli/parser.py",
+      "src/engine/scanner.py",
+      "src/store/sqlite.py",
+      "src/runtime/adapter.py",
+      "src/remediation/planner.py",
+      "tests/test_scanner.py",
+      "tests/test_store.py",
+      "examples/example_usage.py"
+    ],
+    "files_skipped": []
   }
 ]
