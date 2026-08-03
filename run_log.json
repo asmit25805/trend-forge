@@ -1038,5 +1038,30 @@
       "examples/example_usage.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-03T06:53:19.667280",
+    "category": "automation",
+    "source_repo": "microsoft/skill-recorder",
+    "source_stars": 1003,
+    "generated_repo": "tracecraft",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-03-tracecraft",
+    "concept": "A desktop Electron app that records screen, clipboard, window, and audio activity, then uses the GitHub Copilot CLI to synthesize a high\u2011level intent and ordered steps which are emitted as reusable AI\u2011agent Skills or Automations.",
+    "inspiration_angle": "Instead of traditional macro recorders that replay UI clicks, Skill Recorder leverages a large language model to abstract the recorded actions into intent\u2011driven, tool\u2011agnostic steps, enabling agents to generalize from a single example and execute tasks using native APIs (gh CLI, web_fetch) rather than brittle UI automation.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "Cargo.toml",
+      "src/recorder.rs",
+      "src/collectors/command.rs",
+      "src/collectors/filesystem.rs",
+      "src/collectors/network.rs",
+      "src/transformer.rs",
+      "src/pipeline_builder.rs",
+      "src/cache.rs",
+      "tests/recorder_test.rs",
+      "tests/pipeline_builder_test.rs",
+      "examples/basic_usage.rs"
+    ],
+    "files_skipped": []
   }
 ]
