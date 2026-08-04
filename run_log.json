@@ -1063,5 +1063,28 @@
       "examples/basic_usage.rs"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-04T06:22:03.231386",
+    "category": "llm",
+    "source_repo": "drumih/turbo-fieldfare",
+    "source_stars": 4682,
+    "generated_repo": "metal-moe-streamer",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-04-metal-moe-streamer",
+    "concept": "A Swift\u202f+\u202fMetal runtime that streams quantized Mixture\u2011of\u2011Experts (MoE) weights from SSD to run the 26\u2011billion\u2011parameter Gemma\u202f4\u202fA4B model on Apple\u2011Silicon Macs with as little as 2\u202fGB RAM.",
+    "inspiration_angle": "Create a generic, plug\u2011in\u2011style streaming inference framework that can ingest any Metal\u2011compatible MoE checkpoint (not just Gemma) and automatically generate fused kernels for new quantization schemes, turning the project into a reusable library for future on\u2011device LLMs.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "Package.swift",
+      "Sources/MetalMoE/Engine/StreamManager.swift",
+      "Sources/MetalMoE/Engine/InferenceEngine.swift",
+      "Sources/MetalMoE/IO/ModelLoader.swift",
+      "Tests/MetalMoETests/StreamManagerTests.swift",
+      "Tests/MetalMoETests/KernelFusionBuilderTests.swift",
+      "Examples/ExampleUsage.swift"
+    ],
+    "files_skipped": [
+      "Sources/MetalMoE/Kernel/KernelFusionBuilder.swift"
+    ]
   }
 ]
