@@ -1086,5 +1086,28 @@
     "files_skipped": [
       "Sources/MetalMoE/Kernel/KernelFusionBuilder.swift"
     ]
+  },
+  {
+    "date": "2026-08-05T06:19:38.529987",
+    "category": "agent",
+    "source_repo": "QwenAudio/qwen-audio-agent",
+    "source_stars": 1902,
+    "generated_repo": "voice-multi-copilot",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-05-voice-multi-copilot",
+    "concept": "A Node\u2011based real\u2011time voice runtime that continuously streams audio to and from AI agents, keeping the conversation alive while the agent performs background tasks.",
+    "inspiration_angle": "Instead of a simple voice\u2011to\u2011LLM wrapper, this project treats the voice channel as a persistent, bidirectional conduit that can interleave natural speech with asynchronous tool execution, effectively turning the agent into a real\u2011time co\u2011pilot. A separate project could extend this model to collaborative multi\u2011agent scenarios where several agents share the same audio stream and negotiate task ownership.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/types.ts",
+      "src/gateway/audioGateway.ts",
+      "src/agents/collaborationEngine.ts",
+      "src/core/conversationStream.ts",
+      "src/backend/runtimeConnector.ts",
+      "examples/example.ts",
+      "test/audioGateway.test.ts",
+      "test/collaborationEngine.test.ts"
+    ],
+    "files_skipped": []
   }
 ]
