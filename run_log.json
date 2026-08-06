@@ -1109,5 +1109,29 @@
       "test/collaborationEngine.test.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-06T06:24:02.160681",
+    "category": "api",
+    "source_repo": "contatomegasign/bybit-trading-api",
+    "source_stars": 139,
+    "generated_repo": "polytrade-sdk",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-06-polytrade-sdk",
+    "concept": "A TypeScript SDK that provides unified, promise\u2011based wrappers for Bybit's REST V5 endpoints and WebSocket APIs, handling authentication, rate\u2011limit boosting, and automatic reconnection.",
+    "inspiration_angle": "Create a generic \u201cexchange\u2011agnostic\u201d trading SDK that abstracts the authentication, rate\u2011limit, and WebSocket management patterns discovered here into a pluggable framework, allowing developers to drop\u2011in support for multiple exchanges (e.g., Binance, Kraken) by providing exchange\u2011specific endpoint maps while reusing the same event\u2011driven core and custom signing infrastructure.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/types.ts",
+      "src/core/engine.ts",
+      "src/plugins/basePlugin.ts",
+      "src/auth/signatureProvider.ts",
+      "src/util/rateLimiter.ts",
+      "src/util/eventBus.ts",
+      "test/engine.test.ts",
+      "test/eventBus.test.ts",
+      "examples/basicUsage.ts"
+    ],
+    "files_skipped": []
   }
 ]
