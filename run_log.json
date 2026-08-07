@@ -1133,5 +1133,29 @@
       "examples/basicUsage.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-07T05:29:56.208702",
+    "category": "ai",
+    "source_repo": "MIgHTy-alIeN/MEV-Ethereum-Trading-Bot",
+    "source_stars": 2373,
+    "generated_repo": "arbiter-hub",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-07-arbiter-hub",
+    "concept": "A Solidity smart\u2011contract that atomically discovers and executes ETH/token arbitrage between Uniswap V3 pools/routers, driven by an off\u2011chain automation script.",
+    "inspiration_angle": "Instead of relying on flash loans, the bot leverages its own on\u2011chain capital and a configurable whitelist to perform low\u2011risk, repeatable arbitrage, positioning it as a safer entry point for developers new to MEV while still offering the flexibility of dynamic fee and token selection.",
+    "files_pushed": [
+      "src/core/models.py",
+      "src/core/whitelist.py",
+      "src/api/bot.py",
+      "src/utils/logger.py",
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "tests/test_engine.py",
+      "tests/test_whitelist.py",
+      "examples/basic_usage.py"
+    ],
+    "files_skipped": [
+      "src/core/engine.py"
+    ]
   }
 ]
