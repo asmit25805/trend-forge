@@ -1157,5 +1157,30 @@
     "files_skipped": [
       "src/core/engine.py"
     ]
+  },
+  {
+    "date": "2026-08-08T04:48:01.457213",
+    "category": "developer-tools",
+    "source_repo": "Paritok-official/paritok-4b-v1",
+    "source_stars": 766,
+    "generated_repo": "code-squeeze",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-08-code-squeeze",
+    "concept": "A proxy that compresses coding\u2011agent context by summarizing and dropping low\u2011value segments before forwarding to the LLM, using a distilled 4B model and deterministic post\u2011processing.",
+    "inspiration_angle": "Instead of training a generic summarizer, the project creates a domain\u2011specific compression teacher that learns from hand\u2011curated ground\u2011truth segments and then distills a lightweight 4B model, turning token\u2011budget optimization into a plug\u2011and\u2011play service for any coding agent.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/api/server.py",
+      "src/utils/concurrency.py",
+      "tests/test_engine.py",
+      "tests/test_server.py",
+      "examples/example.py",
+      "src/providers/openai_client.py"
+    ],
+    "files_skipped": [
+      "src/providers/openai_client.py"
+    ]
   }
 ]
