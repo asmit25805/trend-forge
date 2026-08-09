@@ -1182,5 +1182,29 @@
     "files_skipped": [
       "src/providers/openai_client.py"
     ]
+  },
+  {
+    "date": "2026-08-09T04:57:20.974890",
+    "category": "web",
+    "source_repo": "jjrodcast/TextKit",
+    "source_stars": 81,
+    "generated_repo": "rope-meld",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-09-rope-meld",
+    "concept": "A rope\u2011backed, piece\u2011table rich\u2011text editor engine for Kotlin\u202fMultiplatform that powers Compose\u2011based editors on Android, iOS, Desktop JVM, and Web (Wasm/JS).",
+    "inspiration_angle": "Unlike typical editors that rely on HTML/Markdown as the primary model, TextKit introduces a rope\u2011backed piece\u2011table as the canonical source, enabling true O(log\u202fn) edit performance across all Kotlin targets while providing a unified JSON document format and first\u2011class Compose UI components \u2013 a novel combination that makes it a standalone solution rather than a fork of existing web\u2011centric editors.",
+    "files_pushed": [
+      "Cargo.toml",
+      ".github/workflows/ci.yml",
+      "src/core/engine.rs",
+      "src/collab/crdt.rs",
+      "src/ui/bindings.ts",
+      "src/cli/main.rs",
+      "tests/integration_test.rs",
+      "tests/unit_test.rs",
+      "examples/basic_usage.rs"
+    ],
+    "files_skipped": [
+      "src/plugins/example_plugin.rs"
+    ]
   }
 ]
