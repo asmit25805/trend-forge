@@ -1206,5 +1206,28 @@
     "files_skipped": [
       "src/plugins/example_plugin.rs"
     ]
+  },
+  {
+    "date": "2026-08-10T05:16:06.229631",
+    "category": "cli",
+    "source_repo": "petergyang/human-review",
+    "source_stars": 663,
+    "generated_repo": "review-sync",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-10-review-sync",
+    "concept": "A local CLI\u2011driven visual editor that loads HTML or Markdown in a sandboxed iframe, lets users edit and comment inline, and batches the feedback for AI agents via a pollable local server.",
+    "inspiration_angle": "Unlike generic WYSIWYG editors, this project fuses a Google\u2011Docs\u2011style comment system with an AI\u2011agent feedback pipeline, using a minimal local server and sandboxed iframe to keep the workflow entirely offline and secure while still offering a seamless handoff to AI agents.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "package.json",
+      "src/types.ts",
+      "src/server.ts",
+      "src/cli.ts",
+      "src/router.ts",
+      "src/ui/renderer.ts",
+      "test/server.test.ts",
+      "test/cli.test.ts",
+      "examples/basic-example.ts"
+    ],
+    "files_skipped": []
   }
 ]
