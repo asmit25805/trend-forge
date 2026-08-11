@@ -1229,5 +1229,27 @@
       "examples/basic-example.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-11T04:59:10.861946",
+    "category": "automation",
+    "source_repo": "kirodotdev/KiroCrew",
+    "source_stars": 2630,
+    "generated_repo": "aiops-orchestrator",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-11-aiops-orchestrator",
+    "concept": "Kiro Crew provides a locally\u2011hosted, persistent AI\u2011agent workspace that can run unattended tasks, schedule recurring jobs, and expose extensible apps via a plugin\u2011style SDK.",
+    "inspiration_angle": "Unlike generic AI\u2011assistant wrappers, Kiro Crew combines a cryptographically\u2011secure distribution model, a persistent multi\u2011agent workspace, and a first\u2011class plugin SDK that lets developers treat AI agents as interchangeable micro\u2011services\u2014creating a platform for AI\u2011augmented DevOps rather than a single\u2011purpose chatbot.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/plugins/manager.py",
+      "src/scheduler/cron.py",
+      "tests/test_engine.py",
+      "tests/test_plugin_manager.py",
+      "examples/example_agent.py"
+    ],
+    "files_skipped": []
   }
 ]
