@@ -1251,5 +1251,32 @@
       "examples/example_agent.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-12T05:24:37.482300",
+    "category": "llm",
+    "source_repo": "FareedKhan-dev/kimi-k3-in-c",
+    "source_stars": 4941,
+    "generated_repo": "trunkstream",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-12-trunkstream",
+    "concept": "A portable C99 inference engine that runs a 2.78\u2011trillion\u2011parameter transformer (Kimi\u202fK3) on a single CPU by streaming the model\u2019s trunk from disk and using custom BF16 and MXFP4 kernels.",
+    "inspiration_angle": "The project\u2019s core novelty is the \u201cmemory\u2011as\u2011dial\u201d streaming architecture that treats the model\u2019s trunk as a read\u2011only byte stream while keeping only the quantised experts in RAM. A separate project could generalise this pattern to any transformer family\u2014building a plug\u2011in framework where model shards are described in a manifest and streamed on\u2011the\u2011fly, allowing arbitrary\u2011size models to run on constrained devices with interchangeable quantisation back\u2011ends.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "Makefile",
+      "src/core/manifest_loader.c",
+      "src/core/trunk_streamer.c",
+      "src/core/expert_cache.c",
+      "src/core/inference_engine.c",
+      "tests/test_manifest_loader.c",
+      "tests/test_inference_engine.c",
+      "examples/example.c",
+      "src/core/manifest_loader.h",
+      "src/core/trunk_streamer.h",
+      "src/core/expert_cache.h",
+      "src/core/inference_engine.h",
+      "src/core/quantizer_backend.h"
+    ],
+    "files_skipped": []
   }
 ]
