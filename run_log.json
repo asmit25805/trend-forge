@@ -1302,5 +1302,29 @@
       ".github/workflows/ci.yml"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-14T05:26:25.159624",
+    "category": "api",
+    "source_repo": "wzchav/tokentab",
+    "source_stars": 212,
+    "generated_repo": "ci-costguard",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-14-ci-costguard",
+    "concept": "A local Python utility that scans Claude Code, Codex, Gemini (and stubbed Cursor) CLI session logs, aggregates token usage and cost, and presents the data via CLI and a minimal web dashboard.",
+    "inspiration_angle": "Extend the concept into a continuous\u2011integration plugin that automatically injects cost\u2011tracking into CI pipelines, enforces per\u2011project token budgets, and emits alerts via Slack or GitHub comments\u2014turning the offline aggregation model into a proactive cost\u2011governance system.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/parser.py",
+      "src/core/aggregator.py",
+      "src/core/budget.py",
+      "src/core/alert.py",
+      "src/ci/plugin.py",
+      "tests/test_parser.py",
+      "tests/test_aggregator.py",
+      "examples/example_usage.py"
+    ],
+    "files_skipped": []
   }
 ]
