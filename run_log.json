@@ -1326,5 +1326,29 @@
       "examples/example_usage.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-15T04:21:47.446981",
+    "category": "ai",
+    "source_repo": "yc-software/qm",
+    "source_stars": 13565,
+    "generated_repo": "collab-orbit",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-15-collab-orbit",
+    "concept": "A TypeScript CLI and runtime that creates multi\u2011tenant, collaborative AI agent workspaces with per\u2011user and per\u2011channel scoped memory, files, and execution, deployable to Fly.io or AWS.",
+    "inspiration_angle": "Unlike typical single\u2011bot assistants, QM introduces a true \"multiplayer\" AI workspace where each participant gets an isolated sandbox yet can collaborate through shared scopes, with interchangeable LLM back\u2011ends and deployment platforms\u2014creating a novel hybrid of multi\u2011tenant SaaS and AI agent orchestration.",
+    "files_pushed": [
+      "package.json",
+      ".github/workflows/ci.yml",
+      "src/types.ts",
+      "src/cli/router.ts",
+      "src/providers/registry.ts",
+      "src/core/workspace.ts",
+      "src/engine/agent_executor.ts",
+      "src/utils/logger.ts",
+      "tests/router.test.ts",
+      "tests/agent_executor.test.ts",
+      "examples/basic_usage.ts"
+    ],
+    "files_skipped": []
   }
 ]
