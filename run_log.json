@@ -1350,5 +1350,31 @@
       "examples/basic_usage.ts"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-16T04:27:26.979136",
+    "category": "developer-tools",
+    "source_repo": "ShawnPana/phone-harness",
+    "source_stars": 1822,
+    "generated_repo": "visual-harness",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-16-visual-harness",
+    "concept": "A macOS\u2011only Python harness that lets an LLM drive a real iPhone by reading the iPhone Mirroring window via OCR and injecting touch events directly into the mirroring app.",
+    "inspiration_angle": "Instead of building a generic iOS automation framework, this project leverages the existing macOS iPhone Mirroring feature as a transport layer, turning the mirroring window itself into a visual API that an LLM can read and write to, which is a distinct approach from traditional WebDriverAgent or simulator\u2011based solutions.",
+    "files_pushed": [
+      ".github/workflows/ci.yml",
+      "requirements.txt",
+      "src/core/models.py",
+      "src/core/engine.py",
+      "src/backends/macos_backend.py",
+      "src/backends/windows_backend.py",
+      "src/ocr/vision_ocr.py",
+      "src/cli/run.py",
+      "tests/test_engine.py",
+      "tests/test_ocr.py",
+      "examples/example_script.py",
+      "src/plugins/__init__.py",
+      "src/reporters/__init__.py"
+    ],
+    "files_skipped": []
   }
 ]
