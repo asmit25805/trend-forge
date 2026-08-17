@@ -1376,5 +1376,29 @@
       "src/reporters/__init__.py"
     ],
     "files_skipped": []
+  },
+  {
+    "date": "2026-08-17T04:32:30.955904",
+    "category": "web",
+    "source_repo": "lexmount/moli",
+    "source_stars": 417,
+    "generated_repo": "webloom",
+    "generated_url": "https://github.com/asmit25805/trendforge-output/tree/main/2026-08-17-webloom",
+    "concept": "Moli is a headless browser runtime written in Rust that renders pages on\u2011demand and exposes Chrome DevTools, WebDriver Classic and WebDriver BiDi interfaces for AI agents.",
+    "inspiration_angle": "Moli combines a Servo\u2011derived layout engine with on\u2011demand rendering and a unified CDP/WebDriver interface, offering a uniquely low\u2011resource browser tailored for LLM agents\u2014distinct from generic headless browsers like Playwright or Puppeteer by exposing a semantic\u2011tree dump and tight integration with AI\u2011friendly workflows.",
+    "files_pushed": [
+      "Cargo.toml",
+      ".github/workflows/ci.yml",
+      "src/engine.rs",
+      "src/session.rs",
+      "src/renderer.rs",
+      "src/protocol.rs",
+      "src/streamer.rs",
+      "src/cli/main.rs",
+      "tests/integration_test.rs",
+      "tests/unit_test.rs",
+      "examples/example.rs"
+    ],
+    "files_skipped": []
   }
 ]
